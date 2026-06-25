@@ -19,9 +19,10 @@ struct frame_timer {
     const frame_timer_ops_t *ops;
 };
 
+/* 硬件定时器工厂：共性参数 (cb, ctx, timeout_us) + 平台参数 (hw_id)
+ * tick_period_us 等平台细节下沉到 frame_timer_hw_init 阶段处理 */
 frame_timer_t* frame_timer_hw_create(timer_callback cb, void *ctx,
                                       uint16_t timeout_us,
-                                      uint16_t tick_period_us,
                                       uint8_t hw_id);
 
 #endif

@@ -26,8 +26,7 @@ typedef struct {
 
 static frame_timer_hw_t hw_instance[FRAME_TIMER_HW_MAX];
 
-/* ---- 3. 适配器表 —— 每平台实现一份 ---- */
-static const timer_hw_adapter_t hw_adapter[FRAME_TIMER_HW_MAX];
+/* ---- 3. 适配器表 —— 每平台实现一份（见文件末尾平台适配区）---- */
 
 /* ============================================================
  *  公共接口
@@ -86,7 +85,64 @@ void frame_timer_hw_isr(uint8_t hw_id) {
 
 
 /* 平台 B：TMR + SysTick + RTC 混用 */
-static const timer_hw_adapter_t hw_adapter[] = {
+static const timer_hw_adapter_t hw_adapter[FRAME_TIMER_HW_MAX] = {
     [0] = { .start = timer1_start,  .stop = timer1_stop,  .init=timer1_init, .restart=timer1_restart, .clear_isr_flag=timer1_clear_isr_flag},
 
 };
+
+/* ============================================================
+ *  frame_timer_t 包装层 —— 将 hw_id 封装为通用 frame_timer_t 接口
+ *  外部通过 frame_timer_hw_create() 获取定时器，只依赖 ops 表
+ * ============================================================ */
+
+#define TICK_PERIOD_US_DEFAULT  1000U   /* 默认定时器 tick 周期 1ms */
+
+/* 包装实例：每个 hw_id 对应一个 frame_timer_t */
+typedef struct {
+    frame_timer_t base;
+    uint8_t       hw_id;
+} frame_timer_hw_wrapper_t;
+
+static frame_timer_hw_wrapper_t hw_wrapper[FRAME_TIMER_HW_MAX];
+static uint8_t                  hw_occupied_map = 0U;
+
+/* ---- ops 实现：委托到 frame_timer_hw_* ---- */
+static void hw_ops_start(frame_timer_t *t) {
+    frame_timer_hw_wrapper_t *self = (frame_timer_hw_wrapper_t *)t;
+    frame_timer_hw_start(self->hw_id);
+}
+
+static void hw_ops_stop(frame_timer_t *t) {
+    frame_timer_hw_wrapper_t *self = (frame_timer_hw_wrapper_t *)t;
+    frame_timer_hw_stop(self->hw_id);
+}
+
+static void hw_ops_restart(frame_timer_t *t) {
+    frame_timer_hw_wrapper_t *self = (frame_timer_hw_wrapper_t *)t;
+    frame_timer_hw_restart(self->hw_id);
+}
+
+static const frame_timer_ops_t hw_timer_ops = {
+    .start   = hw_ops_start,
+    .stop    = hw_ops_stop,
+    .restart = hw_ops_restart,
+};
+
+/* ---- 工厂函数 ---- */
+frame_timer_t* frame_timer_hw_create(timer_callback cb, void *ctx,
+                                      uint16_t timeout_us,
+                                      uint8_t hw_id) {
+    if (hw_id >= FRAME_TIMER_HW_MAX) return NULL;
+    if (hw_occupied_map & (1 << hw_id)) return NULL;  /* 已被占用 */
+
+    hw_occupied_map |= (1 << hw_id);
+
+    frame_timer_hw_wrapper_t *w = &hw_wrapper[hw_id];
+    w->base.ops = &hw_timer_ops;
+    w->hw_id    = hw_id;
+
+    frame_timer_hw_init(hw_id, cb, ctx, TICK_PERIOD_US_DEFAULT);
+    frame_timer_hw_set_timeout(hw_id, timeout_us);
+
+    return &w->base;
+}

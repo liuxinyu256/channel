@@ -16,6 +16,7 @@ typedef enum {
 typedef void (*frame_finish_callback)(uint8_t *frame, uint16_t len);
 
 typedef struct packetizer packetizer_t;
+typedef struct frame_timer frame_timer_t;  /* 前置声明，供封包器注入定时器 */
 //基类虚函数表，子类需要实现这些函数接口
 typedef struct{
     void (*init)(packetizer_t *pkt);    
@@ -47,6 +48,6 @@ void      set_frame_finish_callback(packetizer_t *pkt, frame_finish_callback cb)
 /*************************************************************************************************************************** 
  * 超时封包器创建函数:创建一个基于超时封包策略的packetizer实例，传入超时时间参数，返回指向packetizer_t的指针，如果没有可用实例则返回NULL
  ****************************************************************************************************************************/
-packetizer_t* packetizer_timeout_create(uint16_t timeout);
+packetizer_t* packetizer_timeout_create(uint16_t timeout_us, frame_timer_t *timer);
 
 #endif

@@ -5,13 +5,14 @@
  */
 #include "packet.h"
 #include "frame_timer.h"
+#include <string.h>
+
 //超时封包器类，继承自packetizer基类
 typedef struct {
     packetizer_t  base;                             //继承packetizer基类
     //超时封包器特有的属性
-    uint8_t                timer_id;                 //绑定定时器id
-    uint16_t               timeout_ticks;             //超时时间 
-   
+    uint16_t               timeout_ticks;             //超时时间（微秒）
+    frame_timer_t          *timer;                   //注入的定时器实例（硬件/软件/模拟均可）
 }packetizer_Timer_t;
 
 #define MAX_TIMEOUT_INSTANCES  4 //最大超时封包器实例数量
@@ -104,22 +105,25 @@ static void timeout_timer_callback(void *ctx) {
 
 /**
  * @brief 创建一个带超时功能的数据包解析器
- * @param timeout_us 超时时间，单位为微秒,数值上至少要大于两个字节的长度，转换公式为：timeout_us=
+ * @param timeout_us 帧间超时时间（微秒），超过此时间未收到新字节即认为一帧完成
+ * @param timer      外部注入的定时器实例（frame_timer_hw_create / frame_timer_sw_create 等）
+ *                   封包器不关心定时器实现，只调用 timer->ops 接口
+ * @return 封包器基类指针，无可用实例时返回 NULL
  */
-packetizer_t* packetizer_timeout_create(uint16_t timeout_us) {
-  
-    for(uint8_t i=0;i<MAX_TIMEOUT_INSTANCES;i++){
-        if(!(timeout_occupied_map & (1 << i))){ //判断这块内存是否被占用
-            timeout_occupied_map|=(1<<i); //标记这块内存被占用
-            timeout_instance[i].base.ops=&timeout_packet_ops; //设置虚函数表指针 
-            timeout_instance[i].timer=frame_timer_create_hw(timeout_timer_callback, &timeout_instance[i], timeout_us); //创建硬件定时器实例
-            timeout_instance[i].timeout_ticks= timeout_us;
-            timeout_instance[i].base.Rxidx=0; //初始化接收索引
-            memset(timeout_instance[i].base.Rxbuf, 0, sizeof(timeout_instance[i].base.Rxbuf)); //清空接收缓冲区
-       
-            return &timeout_instance[i].base; //返回基类指针
-        }
+packetizer_t* packetizer_timeout_create(uint16_t timeout_us, frame_timer_t *timer) {
+    if (timer == NULL) return NULL;
 
+    for (uint8_t i = 0; i < MAX_TIMEOUT_INSTANCES; i++) {
+        if (!(timeout_occupied_map & (1 << i))) {
+            timeout_occupied_map |= (1 << i);
+            timeout_instance[i].base.ops    = &timeout_packet_ops;
+            timeout_instance[i].timer       = timer;                     /* 外部注入，不内部创建 */
+            timeout_instance[i].timeout_ticks = timeout_us;
+            timeout_instance[i].base.Rxidx  = 0;
+            memset(timeout_instance[i].base.Rxbuf, 0, sizeof(timeout_instance[i].base.Rxbuf));
+
+            return &timeout_instance[i].base;
+        }
     }
-    return NULL; //没有可用实例，返回NULL
+    return NULL;
 }
