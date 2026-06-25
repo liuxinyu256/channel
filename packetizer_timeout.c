@@ -28,7 +28,7 @@ static uint8_t            timeout_occupied_map =0U;                     //超时
  */
 static void packetizer_Timer_init(packetizer_t *pkt)
 {   
-    packetizer_Timer_t *self = (packetizer_Timer_t *)pkt;
+    packetizer_Timer_t *self = (packetizer_t *)pkt;
 
     if (self == NULL||self->base.ops==NULL) {
         return;
@@ -51,7 +51,7 @@ static void packetizer_Timer_reset(packetizer_t *pkt)
     if (pkt == NULL || pkt->ops == NULL) {
         return;
     }
-    packetizer_Timer_t *self = (packetizer_Timer_t *)pkt;
+    packetizer_Timer_t *self = (packetizer_t *)pkt;
     self->base.Rxidx = 0;
     memset(self->base.Rxbuf, 0, sizeof(self->base.Rxbuf));
     self->timeout_ticks=0;
@@ -65,25 +65,36 @@ static void packetizer_Timer_reset(packetizer_t *pkt)
 
 static uint8_t is_frame_complete(packetizer_t *pkt) //判断一帧是否接收完成
 {
-    if (pkt == NULL || pkt->ops == NULL) {
+    if (pkt == NULL || pkt->strategy == NULL) {
         return 0;
     }
 
 }
+/**
+*  基类方法 on_byte的实现
+*  接收到一字节应该怎么处理
+*/
 static void packetizer_Timer_on_byte(packetizer_t *pkt) //接收到一个字节，进行处理
 {
-    if (pkt == NULL || pkt->ops == NULL) {
+
+    if (pkt == NULL || pkt->strategy == NULL) {
         return;
     }
-
+    packetizer_Timer_t *self =(packetizer_Timer_t *)pkt; //获取超时封包器
+    /**对于超时封包器而言，接收到一个字节就应该清空超时计数器的计数值，清空定时器计数寄存器的计数值
+    * 
+    */
+   
 }
-//注册接口
-const packet_ops_t timeout_packet_ops = {
-    .init              = packetizer_Timer_init,
-    .reset             = packetizer_Timer_reset,
-    .is_frame_complete = is_frame_complete,
+/* ---- 策略实现：注册双表 ---- */
+static const packet_ops_t timeout_ops = {
+    .init  = packetizer_Timer_init,
+    .reset = packetizer_Timer_reset,
+};
+
+static const packet_strategy_t timeout_strategy = {
     .on_byte           = packetizer_Timer_on_byte,
-    
+    .is_frame_complete = is_frame_complete,
 };
 
 //定时中断回调函数
@@ -92,7 +103,7 @@ static void timeout_timer_callback(void *ctx) {
         return;
     }
     packetizer_Timer_t *self = (packetizer_Timer_t *)ctx;
-    if(self->timer==NULL || self->base.ops==NULL){
+    if(self->timer==NULL || self->base.strategy==NULL){
         return;
     }
     
@@ -116,7 +127,8 @@ packetizer_t* packetizer_timeout_create(uint16_t timeout_us, frame_timer_t *time
     for (uint8_t i = 0; i < MAX_TIMEOUT_INSTANCES; i++) {
         if (!(timeout_occupied_map & (1 << i))) {
             timeout_occupied_map |= (1 << i);
-            timeout_instance[i].base.ops    = &timeout_packet_ops;
+            timeout_instance[i].base.ops      = &timeout_ops;
+            timeout_instance[i].base.strategy = &timeout_strategy;
             timeout_instance[i].timer       = timer;                     /* 外部注入，不内部创建 */
             timeout_instance[i].timeout_ticks = timeout_us;
             timeout_instance[i].base.Rxidx  = 0;
@@ -126,4 +138,16 @@ packetizer_t* packetizer_timeout_create(uint16_t timeout_us, frame_timer_t *time
         }
     }
     return NULL;
+}
+
+void packetizer_timeout_destroy(packetizer_t *pkt) {
+    if (pkt == NULL) return;
+
+    for (uint8_t i = 0; i < MAX_TIMEOUT_INSTANCES; i++) {
+        if (&timeout_instance[i].base == pkt) {
+            timeout_instance[i].timer = NULL;
+            timeout_occupied_map &= ~(1 << i);
+            return;
+        }
+    }
 }

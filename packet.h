@@ -17,24 +17,40 @@ typedef void (*frame_finish_callback)(uint8_t *frame, uint16_t len);
 
 typedef struct packetizer packetizer_t;
 typedef struct frame_timer frame_timer_t;  /* 前置声明，供封包器注入定时器 */
-//基类虚函数表，子类需要实现这些函数接口
-typedef struct{
-    void (*init)(packetizer_t *pkt);    
-    void (*reset)(packetizer_t *pkt); 
-    void (*on_byte)(packetizer_t *pkt);
-    uint8_t (*is_frame_complete)(packetizer_t *pkt);
-}packet_ops_t;
+/**
+ * packet_ops_t — 公开操作接口
+ * 上层（channel 层）通过 pkt->ops 调用，负责生命周期管理
+ */
+typedef struct {
+    void (*init) (packetizer_t *pkt);   /* 初始化封包器（绑定策略后调用） */
+    void (*reset)(packetizer_t *pkt);   /* 重置封包器（切换策略前调用）*/
+} packet_ops_t;
 
-/**packetizer封包器基类，定义了封包器的基本属性和操作接口
- * @brief 封包器基类
- * 使用封包器时，需要继承该类，并实现packet_ops_t中的操作接口
-*/
+/**
+ * packet_strategy_t — 封包策略钩子
+ * 由基类内部调用，不同封包策略各自实现。
+ * 上层不应直接调用这些方法。
+ */
+typedef struct {
+    void    (*on_byte)         (packetizer_t *pkt);  /* 收到一个字节时基类内部调用 */
+    uint8_t (*is_frame_complete)(packetizer_t *pkt); /* 是否收完一帧，基类内部调用 */
+} packet_strategy_t;
+
+/**
+ * packetizer 封包器基类
+ *
+ * 使用方式：
+ *   1. 调用工厂函数创建实例（内部绑定 ops + strategy）
+ *   2. 上层通过 pkt->ops->init() 初始化
+ *   3. 切换策略：pkt->ops->reset() → 注入新策略
+ */
 struct packetizer{
-    const packet_ops_t    *ops;                         //封包器操作接口    
-    packetizer_type       type;                           //封包策略类型    
-    uint8_t               Rxbuf[RX_PACKET_BUF_SIZE];        //接收缓存
-    volatile uint16_t     Rxidx;                            //接收缓存索引      
-    frame_finish_callback on_frame_finish;                   //帧完成回调函数指针,channel层注册这个回调函数，当packetizer完成一帧数据的封包时调用，通知channel层有完整帧可读
+    const packet_ops_t      *ops;       /* 公开操作（上层调用）        */
+    const packet_strategy_t *strategy;  /* 策略钩子（基类内部调用）    */
+    packetizer_type         type;       /* 封包策略类型                */
+    uint8_t                 Rxbuf[RX_PACKET_BUF_SIZE]; /* 接收缓存    */
+    uint16_t                Rxidx;      /* 接收缓存索引（仅 put_byte 写入，无 ISR 并发） */
+    frame_finish_callback   on_frame_finish; /* 帧完成回调             */
 };
 /*********************************************************
  *                【基类通用公有方法】
@@ -49,5 +65,6 @@ void      set_frame_finish_callback(packetizer_t *pkt, frame_finish_callback cb)
  * 超时封包器创建函数:创建一个基于超时封包策略的packetizer实例，传入超时时间参数，返回指向packetizer_t的指针，如果没有可用实例则返回NULL
  ****************************************************************************************************************************/
 packetizer_t* packetizer_timeout_create(uint16_t timeout_us, frame_timer_t *timer);
+void         packetizer_timeout_destroy(packetizer_t *pkt); /* 释放封包器实例，归还 bitmap 槽位 */
 
 #endif

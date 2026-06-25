@@ -1,8 +1,9 @@
-#ifndef FRAME_TIMER_H
-#define FRAME_TIMER_H
+#ifndef CHANNEL_H
+#define CHANNEL_H
 #include <stdlib.h>
 #include <stdint.h>
-#include "packet.h"
+
+typedef struct packetizer packetizer_t;  /* 前置声明，避免全量依赖 packet.h */
 
 typedef struct data_channel data_channel_t;
 typedef enum {
@@ -31,22 +32,22 @@ typedef struct {
 
 //数据通道结构体，数据通道下层接收原始数据的来源由 byte_source 定义，根据封包策略进行封包，得到一帧完整的数据包
 struct data_channel{
-    data_channel_ops_t *ops;               //数据通道操作
-    //数据通道数据源
-    uint8_t                 id;           //每个通道ID都有一个id
-    channel_state           state;        //通道状态
+    const data_channel_ops_t *ops;          /* 数据通道操作（不可运行时修改） */
+    uint8_t                 id;              /* 通道ID */
+    channel_state           state;           /* 通道状态 */
 
-    /* 用户上下文，回调时传回 */
-    void                    *user_data;
+    void                    *user_data;      /* 用户上下文，回调时传回 */
+
     /* 调试/统计 */
     uint32_t                rx_frames;      /* 收帧总数 */
     uint32_t                tx_frames;      /* 发帧总数 */
     uint32_t                rx_overflows;   /* 溢出次数 */
 
-    recv_callback_t         on_frame_recv; //储存帧接收完成函数指针
-    send_done_callback_t    on_send_done;  //储存发送完成函数指针
-    packetizer_t            *pkt;           //一个数据通道绑定一个packetizer实例 
+    /* 回调 —— 通过 ops->set_callback 设置，勿直接赋值 */
+    recv_callback_t         on_frame_recv;
+    send_done_callback_t    on_send_done;
+    packetizer_t            *pkt;           /* 绑定的封包器实例 */ 
 };
 
 
-#endif
+#endif /* CHANNEL_H */

@@ -4,12 +4,8 @@
 #include <stdint.h>
 #include "frame_timer.h"
 
-void frame_timer_hw_init(uint8_t hw_id, timer_callback cb, void *ctx,
-                         uint16_t tick_period_us);
-void frame_timer_hw_start  (uint8_t hw_id);
-void frame_timer_hw_stop   (uint8_t hw_id);
-void frame_timer_hw_restart(uint8_t hw_id);
-void frame_timer_hw_set_timeout(uint8_t hw_id, uint16_t us);
+/* 平台 ISR 中调用，每个硬件定时器中断独立调用 */
+void frame_timer_hw_isr(uint8_t hw_id);
 
 
 
