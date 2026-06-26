@@ -7,7 +7,7 @@
  * frame_timer.h —— 定时器基类
  *
  * 设计原则：
- *   基类持有所有定时器共有的引擎数据（counter / threshold / cb / ctx），
+ *   基类持有所有定时器共有的数据（counter / threshold / cb / ctx），
  *   子类只放实现相关字段（硬件通道号、tick 周期等）。
  *
  * 继承方式（C 风格）：
@@ -46,17 +46,14 @@ typedef struct {
  *    counter          - 当前 tick 计数值，递增逻辑由子类驱动
  *                       （硬件 ISR 递增 或 软件 systick 递增）
  *    timeout_threshold - 超时阈值（单位：tick 数），counter 达到此值时触发 cb
- *
- *  字段归属：
- *    cb / ctx / counter / timeout_threshold 是所有定时器的共性，
- *    放在基类避免每个子类重复定义。子类只需关心"谁来递增 counter"。
+
  * ============================================================ */
 struct frame_timer {
     const frame_timer_ops_t *ops;              /* 多态操作接口               */
     timer_callback           cb;               /* 超时回调                   */
     void                    *ctx;              /* 回调上下文                 */
-    uint16_t                 counter;          /* 当前 tick 计数值           */
-    uint16_t                 timeout_threshold;/* 超时阈值（tick 数）        */
+    uint32_t                 counter;          /* 当前 tick 计数值           */
+    uint32_t                 timeout_threshold;/* 超时阈值（tick 数）        */
 };
 
 /* ============================================================

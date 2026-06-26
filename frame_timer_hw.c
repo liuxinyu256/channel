@@ -54,11 +54,23 @@ static frame_timer_hw_inst_t hw_instances[FRAME_TIMER_HW_MAX];
 static uint8_t               hw_occupied_map = 0U;
 
 /* ============================================================
+ *  平台适配器表
+ *
+ *  换平台只需改这张表，其余代码不变。
+ *  当前绑定：TIM1 作为 hw_id=0 的硬件定时器。
+ *  新增通道在数组中追加即可（如 [1] = { timer2_... }）。
+ * ============================================================ */
+static const timer_hw_adapter_t hw_adapter[FRAME_TIMER_HW_MAX] = {
+    [0] = { .start = timer1_start, .stop = timer1_stop,
+            .init = timer1_init, .restart = timer1_restart,
+            .clear_isr_flag = timer1_clear_isr_flag },
+};
+/* ============================================================
  *  3. ops 回调实现
  *
  *  t : frame_timer_t* —— 基类指针。
  *  self : frame_timer_hw_inst_t* —— 向下转型后的子类指针。
- *
+ *  提供给上层实现的硬件定时器操作。
  *  关键约定：
  *    - t->counter（基类字段）直接用 t 指针访问，无需转型
  *    - hw_id（子类字段）必须通过 self 访问
@@ -154,7 +166,7 @@ void frame_timer_hw_isr(uint8_t hw_id) {
     hw_adapter[hw_id].clear_isr_flag();              /* 平台：清中断标志    */
 
     if (t->base.timeout_threshold == 0) return;      /* 阈值为 0 不计数     */
-
+    //++t是为了丢弃之前的对字节的累计计数
     /* ---- 以下逻辑是定时器引擎核心，与硬件无关 ---- */
     if (++t->base.counter >= t->base.timeout_threshold) {
         t->base.counter = 0;                         /* 清零，准备下一周期   */
@@ -162,18 +174,7 @@ void frame_timer_hw_isr(uint8_t hw_id) {
     }
 }
 
-/* ============================================================
- *  6. 平台适配器表
- *
- *  换平台只需改这张表，其余代码不变。
- *  当前绑定：TIM1 作为 hw_id=0 的硬件定时器。
- *  新增通道在数组中追加即可（如 [1] = { timer2_... }）。
- * ============================================================ */
-static const timer_hw_adapter_t hw_adapter[FRAME_TIMER_HW_MAX] = {
-    [0] = { .start = timer1_start, .stop = timer1_stop,
-            .init = timer1_init, .restart = timer1_restart,
-            .clear_isr_flag = timer1_clear_isr_flag },
-};
+
 
 /* ============================================================
  *  7. destroy —— 释放定时器资源
