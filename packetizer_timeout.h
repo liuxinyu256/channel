@@ -1,6 +1,6 @@
 #ifndef __packetizer_timeout_h
 #define __packetizer_timeout_h
-
+#include "packet.h"
 /**
  * @file packetizer_timeout.h
  * @brief 超时封包器
