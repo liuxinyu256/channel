@@ -63,4 +63,8 @@ packetizer_t* packetizer_timeout_create(uint16_t timeout_us, frame_timer_t *time
 void          packetizer_timeout_destroy(packetizer_t *pkt); /* 释放封包器实例，归还 bitmap 槽位 */
 void          timeout_timer_callback(void *ctx);             /* 超时封包器标准定时回调，供 frame_timer_hw_create 使用 */
 
+<<<<<<< HEAD
 #endif
+=======
+#endif
+>>>>>>> 83c7b9e2a1e40400dfa00ea39b5e8019732c8d26
