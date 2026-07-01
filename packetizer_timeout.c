@@ -69,13 +69,6 @@ static void packetizer_Timer_reset(packetizer_t *pkt)
     if (pkt == NULL || pkt->ops == NULL) {
         return;
     }
-<<<<<<< HEAD
-    packetizer_Timer_t *self = (packetizer_Timer_t *)pkt;
-    self->base.Rxidx = 0;
-    memset(self->base.Rxbuf, 0, sizeof(self->base.Rxbuf));
-    self->timeout_ticks = 0;
-    self->timer_running  = 0;
-=======
     packetizer_Timer_t *self = (packetizer_t *)pkt;
     //清空缓冲器的状态
     self->base.Rxidx = 0; 
@@ -85,7 +78,6 @@ static void packetizer_Timer_reset(packetizer_t *pkt)
     self->timer_running=0; //设置定时器为停止状态
     self->timer=NULL;       //注销定时回调指针
     
->>>>>>> 83c7b9e2a1e40400dfa00ea39b5e8019732c8d26
 }
 
 
