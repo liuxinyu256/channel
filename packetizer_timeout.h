@@ -16,7 +16,7 @@
  * @return 封包器基类指针，无可用实例时返回 NULL
  */
 packetizer_t* packetizer_timeout_create(uint16_t timeout_us, frame_timer_t *timer);
-
+void timeout_timer_callback(void *ctx); //超时封包器定时回调函数
 void packetizer_timeout_destroy(packetizer_t *pkt);
 
 #endif

@@ -121,7 +121,7 @@ frame_timer_t* frame_timer_hw_create(timer_callback cb, void *ctx,
     if (hw_id >= FRAME_TIMER_HW_MAX) return NULL;
     if (hw_occupied_map & (1 << hw_id)) return NULL;
 
-    hw_occupied_map |= (1 << hw_id);
+    hw_occupied_map |= (uint8_t)(1U << hw_id);
 
     frame_timer_hw_inst_t *inst = &hw_instances[hw_id];
 
@@ -141,7 +141,7 @@ frame_timer_t* frame_timer_hw_create(timer_callback cb, void *ctx,
 
     /* ---- 配置硬件 ---- */
     hw_adapter[hw_id].init();
-    hw_adapter[hw_id].set_cmp(inst->base.timeout_threshold);
+    hw_adapter[hw_id].set_cmp((uint16_t)inst->base.timeout_threshold);
 
     return &inst->base;                    /* 返回基类指针，向上转型        */
 }
@@ -188,5 +188,5 @@ void frame_timer_hw_destroy(frame_timer_t *t) {
     uint8_t hw_id = inst->hw_id;
 
     hw_adapter[hw_id].stop();
-    hw_occupied_map &= ~(1 << hw_id);
+    hw_occupied_map &= (uint8_t)~(1U << hw_id);
 }
