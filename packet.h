@@ -1,70 +1,111 @@
 #ifndef PACKET_H
 #define PACKET_H
+
 /**
- * 接收封包器
+ * 接收封包器 —— 将字节流组装为完整帧，通过回调推送给上层
+ *
+ * 数据流（上层视角）：
+ *   ┌─────────┐    put_byte()     ┌──────────────┐
+ *   │ 串口 ISR │ ──────────────→  │  packetizer  │
+ *   └─────────┘                   │  (策略+缓冲)  │
+ *                                 └──────┬───────┘
+ *                                        │ 帧完成时触发
+ *                                        ↓
+ *                                 on_frame_finish(frame, len)
+ *                                        │
+ *                                        ↓
+ *                                 ┌──────────────┐
+ *                                 │ 上层(应用层)   │
+ *                                 │ 拷贝/入队/标记 │
+ *                                 └──────────────┘
+ *
+ * 使用步骤：
+ *   1. pkt = packetizer_timeout_create(timeout, timer)   — 创建实例
+ *   2. set_frame_finish_callback(pkt, my_callback)       — 注册帧到回调
+ *   3. 串口 ISR 中调用 packetizer_put_byte(pkt, byte)    — 喂字节
+ *   4. 帧完成后 my_callback(frame, len) 自动触发          — 收帧
+ *
+ * 回调在定时器 ISR 上下文中执行，上层可在回调中直接拷贝数据。
  */
+
 #include <stdlib.h>
 #include <stdint.h>
 
-
+/* ---- 接收缓冲区大小（Modbus RTU 最大 256 字节） ---- */
 #define RX_PACKET_BUF_SIZE  256
 
-typedef enum { 
+/* ---- 封包策略枚举（扩展新策略时在此追加） ---- */
+typedef enum {
     packetizer_type_Timeout,    /* 超时封包策略 */
-}packetizer_type;           /* 预留不同封包策略的枚举类型 */
+} packetizer_type;
 
+/* ---- 帧完成回调：frame=数据指针, len=帧字节数 ---- */
 typedef void (*frame_finish_callback)(uint8_t *frame, uint16_t len);
 
 typedef struct packetizer packetizer_t;
 typedef struct frame_timer frame_timer_t;  /* 前置声明，供封包器注入定时器 */
+
 /**
- * packet_ops_t — 公开操作接口
- * 上层（channel 层）通过 pkt->ops 调用，负责生命周期管理
+ * packet_ops_t — 策略操作接口
+ *
+ * 由各封包策略实现（如超时策略），仅基类 wrapper 内部调用。
+ * 上层不直接访问 ops —— 请用 packetizer_init / reset / put_byte 等公开 API。
  */
 typedef struct {
-    void (*init) (packetizer_t *pkt);   /* 初始化封包器（绑定策略后调用） */
-    void (*reset)(packetizer_t *pkt);   /* 重置封包器（切换策略前调用）*/
-    void    (*on_byte)         (packetizer_t *pkt);  /* 收到一个字节时基类内部调用 */
-    uint8_t (*is_frame_complete)(packetizer_t *pkt); /* 是否收完一帧，基类内部调用 */
+    void (*init)   (packetizer_t *pkt);  /* 初始化封包器 */
+    void (*reset)  (packetizer_t *pkt);  /* 重置封包器   */
+    void (*on_byte)(packetizer_t *pkt);  /* 收到一个字节，策略更新状态机 */
 } packet_ops_t;
-
-
 
 /**
  * packetizer 封包器基类
  *
- * 使用方式：
- *   1. 调用工厂函数创建实例（内部绑定 ops + strategy）
- *   2. 上层通过 pkt->ops->init() 初始化
- *   3. 切换策略：pkt->ops->reset() → 注入新策略
+ * 字段对上层透明，通过公开 API 操作。
+ * Rxbuf 是线性缓冲区，帧到后通过 on_frame_finish 回调推送，
+ * 推送完自动清零，下一帧从头写入。
  */
-struct packetizer{
-    const packet_ops_t      *ops;       /* 公开操作（上层调用）        */
-    packetizer_type         type;       /* 封包策略类型                */
-    uint8_t                 Rxbuf[RX_PACKET_BUF_SIZE]; /* 接收缓存    */
-    uint16_t                Rxidx;      /* 接收缓存索引（仅 put_byte 写入，无 ISR 并发） */
-    frame_finish_callback   on_frame_finish;  /* 帧完成回调             */
+struct packetizer {
+    const packet_ops_t      *ops;            /* 策略操作（基类内部调用）     */
+    packetizer_type          type;           /* 封包策略类型                */
+    uint8_t                  Rxbuf[RX_PACKET_BUF_SIZE]; /* 接收缓存        */
+    uint16_t                 Rxidx;          /* 缓存写入位置 / 当前帧长度   */
+    frame_finish_callback    on_frame_finish;/* 帧完成回调（ISR 中触发）    */
 };
-/*********************************************************
- *                【基类通用公有方法】
- * 说明：基类实现的通用逻辑，所有子类直接调用，无需重写
- *********************************************************/
-void     packetizer_init(packetizer_t *pkt); //初始化封包器，调用策略的init方法
-void     packetizer_reset(packetizer_t *pkt); //重置封包器
-uint8_t   packetizer_put_byte(packetizer_t *pkt, uint8_t byte); //将一个字节放入packet中，返回0表示成功，返回1表示失败（如溢出）
-uint8_t   get_frame(packetizer_t *pkt,uint8_t *buf,uint16_t *len); //从packetizer中读取一帧数据，传入一个需要接收这帧数据的缓冲区和一个指向缓冲区大小的指针，函数将帧数据复制到缓冲区，并将实际帧长度写入指针指向的位置，返回0表示成功，返回1表示失败（如没有完整帧可读）
-uint8_t   finish(packetizer_t *pkt); //封包完成，返回0表示成功，返回1表示失败
-void      set_frame_finish_callback(packetizer_t *pkt, frame_finish_callback cb); //设置帧完成回调函数，packetizer在完成一帧数据的封包时调用这个回调函数，通知channel层有完整帧可读
 
-/*************************************************************************************************************************** 
- * 超时封包器创建函数:创建一个基于超时封包策略的packetizer实例，传入超时时间参数，返回指向packetizer_t的指针，如果没有可用实例则返回NULL
- ****************************************************************************************************************************/
-packetizer_t* packetizer_timeout_create(uint16_t timeout_us, frame_timer_t *timer);
-void          packetizer_timeout_destroy(packetizer_t *pkt); /* 释放封包器实例，归还 bitmap 槽位 */
-void          timeout_timer_callback(void *ctx);             /* 超时封包器标准定时回调，供 frame_timer_hw_create 使用 */
+/* ============================================================
+ *  公开 API（上层通过以下函数操作封包器，不直接访问 struct 成员）
+ * ============================================================ */
 
-<<<<<<< HEAD
+/* 初始化 / 重置封包器（内部调用策略的 init / reset） */
+void     packetizer_init(packetizer_t *pkt);
+void     packetizer_reset(packetizer_t *pkt);
+
+/* 向封包器喂入一个字节，串口 ISR 中调用。返回 0=成功，1=溢出 */
+uint8_t  packetizer_put_byte(packetizer_t *pkt, uint8_t byte);
+
+/* 注册帧完成回调
+ * cb 参数为 (frame, len)，frame 指向内部缓冲区，len 为帧长度。
+ * 回调在定时器 ISR 中执行，上层应尽快拷贝数据后返回。
+ */
+void     set_frame_finish_callback(packetizer_t *pkt, frame_finish_callback cb);
+
+/* ============================================================
+ *  超时封包器（packetizer_timeout.c）
+ * ============================================================ */
+
+/* 创建超时封包器
+ * timeout_us: 帧间超时，超过此时间无新字节即认为一帧完成
+ * timer:      外部定时器（frame_timer_hw_create / sw_create 等）
+ * cb:         帧完成回调，可传 NULL 后续注册
+ *
+ * 内部自动：timer->ctx = pkt;  pkt->on_frame_finish = cb
+ * 返回基类指针，无可用实例返回 NULL
+ */
+packetizer_t* packetizer_timeout_create(uint16_t timeout_us, frame_timer_t *timer,
+                                        frame_finish_callback cb);
+void          packetizer_timeout_destroy(packetizer_t *pkt);
+
+/* 超时回调，传给 frame_timer_hw_create 用 */
+void          timeout_timer_callback(void *ctx);
+
 #endif
-=======
-#endif
->>>>>>> 83c7b9e2a1e40400dfa00ea39b5e8019732c8d26

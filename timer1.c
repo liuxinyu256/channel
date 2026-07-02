@@ -17,7 +17,7 @@ void timer1_stop(void)//只写定时器1的暂停
 
 void timer1_restart(void) //只写定时器1的清空定时器的计数值
 {
-
+    
 }
 
 void timer1_clear_isr_flag(void)//只写定时器1的清空定时中断标志位

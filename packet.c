@@ -1,7 +1,20 @@
-
 #include "packet.h"
 
+void packetizer_init(packetizer_t *pkt)
+{
+    if (pkt == NULL || pkt->ops == NULL) {
+        return;
+    }
+    pkt->ops->init(pkt);
+}
 
+void packetizer_reset(packetizer_t *pkt)
+{
+    if (pkt == NULL || pkt->ops == NULL) {
+        return;
+    }
+    pkt->ops->reset(pkt);
+}
 
 //将一个字节放入packet中，返回0表示成功，返回1表示失败（如溢出）
 uint8_t packetizer_put_byte(packetizer_t *pkt, uint8_t byte)
@@ -14,7 +27,7 @@ uint8_t packetizer_put_byte(packetizer_t *pkt, uint8_t byte)
     }
     pkt->Rxbuf[pkt->Rxidx++] = byte;
 
-    /* 通知策略层：有新字节到达，策略自行维护封包状态机 */
+    /* 有新字节到达，策略自行维护封包状态机 */
     if (pkt->ops->on_byte) {
         pkt->ops->on_byte(pkt);
     }

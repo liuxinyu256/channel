@@ -4,18 +4,10 @@
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  channel（数据通道层）                             │
-│  - 通道状态机 (IDLE → RUNNING → STOPPING → ERROR) │
-│  - 收发回调管理                                   │
-│  - 绑定封包器 + 定时器                            │
-└────────────┬─────────────────────────────────────┘
-             │ 依赖注入
-             ▼
-┌──────────────────────────────────────────────────┐
 │  packetizer（封包器层）                            │
 │  - 策略模式：超时封包 / 分隔符 / 长度前缀 ...       │
-│  - put_byte → strategy.on_byte → is_frame_complete │
-│  - 不自己创建定时器，外部注入                       │
+│  - put_byte → strategy.on_byte → start/restart 定时器 │
+│  - 定时器超时 → on_frame_finish 回调通知应用层      │
 └──────┬──────────────────┬────────────────────────┘
        │ 依赖注入          │ 依赖注入
        ▼                  ▼
@@ -49,7 +41,6 @@
 
 | 层 | 文件 | 职责 |
 |----|------|------|
-| 数据通道 | `channel.h` / `channel.c` | 通道状态机，绑定封包器和定时器，暴露收发接口给应用层 |
 | 封包器基类 | `packet.h` / `packet.c` | 帧缓冲管理、`put_byte` 通用逻辑、策略调度 |
 | 封包策略 | `packetizer_timeout.c` | 具体策略实现：怎样算收到一帧、收到字节时做什么 |
 | 定时器基类 | `frame_timer.h` | 定义 counter / threshold / cb / ctx + ops 虚表 |
@@ -99,8 +90,9 @@ frame_timer_t.ops ──▶ hw_timer_ops { hw_start, hw_stop, hw_restart }
 封包器**不内部创建**定时器，由外部注入：
 
 ```c
-frame_timer_t *timer = frame_timer_hw_create(timeout_cb, pkt, 10000, 0);
-packetizer_t  *pkt   = packetizer_timeout_create(10000, timer);
+frame_timer_t *timer = frame_timer_hw_create(timeout_cb, NULL, 10000, 0);
+packetizer_t  *pkt   = packetizer_timeout_create(10000, timer, my_cb);
+// 内部自动：timer->ctx = pkt;  pkt->on_frame_finish = my_cb
 ```
 
 好处：生产环境用硬件定时器，单元测试可注入模拟定时器，无需修改封包器代码。
@@ -144,7 +136,7 @@ packetizer_put_byte(pkt, byte)
     │
     └── strategy->is_frame_complete()   // 基类判断：帧收完了吗？
             │
-            └── YES → on_frame_finish() // 通知 channel 层
+            └── YES → on_frame_finish() // 通知应用层
 ```
 
 ### 3.2 定时器超时流程
@@ -194,18 +186,15 @@ if (timer == NULL) {
 #include "frame_timer.h"
 
 // 1. 先创建定时器
-frame_timer_t *timer = frame_timer_hw_create(timeout_cb, some_ctx, 10000, 0);
+frame_timer_t *timer = frame_timer_hw_create(timeout_cb, NULL, 10000, 0);
 
-// 2. 创建封包器，注入定时器
-packetizer_t *pkt = packetizer_timeout_create(10000, timer);
+// 2. 创建封包器，注入定时器 + 回调（内部自动绑定）
+packetizer_t *pkt = packetizer_timeout_create(10000, timer, on_frame_ready);
 if (pkt == NULL) {
     // 无可用实例
 }
 
-// 3. 设置帧完成回调
-set_frame_finish_callback(pkt, on_frame_ready);
-
-// 4. 喂字节
+// 3. 喂字节
 packetizer_put_byte(pkt, byte);  // 每收到一个字节调用一次
 ```
 
