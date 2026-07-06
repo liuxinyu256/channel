@@ -56,16 +56,4 @@ struct frame_timer {
     uint32_t                 timeout_threshold;/* 超时阈值（tick 数）        */
 };
 
-/* ============================================================
- *  工厂函数（硬件定时器）
- *
- *  cb, ctx, timeout_us 是所有定时器共性参数；
- *  hw_id 是硬件定时器特有参数，由子类工厂接收。
- *  软件定时器工厂签名可不同（例如传入 systick 引用）。
- * ============================================================ */
-frame_timer_t* frame_timer_hw_create(timer_callback cb, void *ctx,
-                                      uint16_t timeout_us,
-                                      uint8_t hw_id);
-void           frame_timer_hw_destroy(frame_timer_t *t);
-
 #endif

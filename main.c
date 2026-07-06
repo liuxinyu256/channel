@@ -7,8 +7,7 @@
  */
 
 #include <stdio.h>
-#include "packet.h"
-#include "frame_timer.h"
+#include "packetizer.h"
 
 /* 帧到回调（上层实现） */
 static void my_frame_handler(uint8_t *frame, uint16_t len) {
@@ -33,7 +32,7 @@ int main(void) {
     printf("[OK] 定时器创建成功 (hw_id=0, timeout=10ms)\n");
 
     /* 2. 创建超时封包器（内部自动：timer->ctx=pkt; pkt->on_frame_finish=cb） */
-    packetizer_t *pkt = packetizer_timeout_create(10000, timer, my_frame_handler);
+    packetizer_t *pkt = packetizer_timeout_create(timer, my_frame_handler);
     if (pkt == NULL) {
         printf("[FAIL] 封包器创建失败\n");
         frame_timer_hw_destroy(timer);

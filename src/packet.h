@@ -89,23 +89,4 @@ uint8_t  packetizer_put_byte(packetizer_t *pkt, uint8_t byte);
  */
 void     set_frame_finish_callback(packetizer_t *pkt, frame_finish_callback cb);
 
-/* ============================================================
- *  超时封包器（packetizer_timeout.c）
- * ============================================================ */
-
-/* 创建超时封包器
- * timeout_us: 帧间超时，超过此时间无新字节即认为一帧完成
- * timer:      外部定时器（frame_timer_hw_create / sw_create 等）
- * cb:         帧完成回调，可传 NULL 后续注册
- *
- * 内部自动：timer->ctx = pkt;  pkt->on_frame_finish = cb
- * 返回基类指针，无可用实例返回 NULL
- */
-packetizer_t* packetizer_timeout_create(uint16_t timeout_us, frame_timer_t *timer,
-                                        frame_finish_callback cb);
-void          packetizer_timeout_destroy(packetizer_t *pkt);
-
-/* 超时回调，传给 frame_timer_hw_create 用 */
-void          timeout_timer_callback(void *ctx);
-
 #endif

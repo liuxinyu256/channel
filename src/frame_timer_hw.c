@@ -6,7 +6,7 @@
  *
  * 字段分层：
  *   基类 frame_timer_t —— ops / cb / ctx / counter / timeout_threshold
- *   子类独有           —— hw_id（硬件通道号）/ tick_period_us（tick 周期）
+ *   子类独有           —— hw_id（硬件通道号），tick 周期由 init() 返回，不存
  *
  * counter 驱动方式：
  *   硬件 ISR → frame_timer_hw_isr() → ++t->base.counter
@@ -25,7 +25,7 @@
  *  每个方法对应当前平台的 HAL / 寄存器操作。
  * ============================================================ */
 typedef struct {
-    void (*init)     (void);               /* 初始化硬件定时器               */
+    uint16_t (*init)     (void);            /* 初始化硬件定时器，返回 tick 周期（us） */
     void (*start)    (void);               /* 启动定时器计数                 */
     void (*stop)     (void);               /* 停止定时器计数                 */
     void (*restart)  (void);               /* 重启定时器（清零硬件计数器）    */
@@ -46,7 +46,6 @@ typedef struct {
 typedef struct {
     frame_timer_t base;                    /* [基类] 对外接口 + 引擎数据     */
     uint8_t       hw_id;                   /* [子类] 硬件通道号              */
-    uint16_t      tick_period_us;          /* [子类] tick 周期（微秒）       */
 } frame_timer_hw_inst_t;
 
 /* ---- 实例池与位图分配器 ---- */
@@ -113,7 +112,6 @@ static const frame_timer_ops_t hw_timer_ops = {
  *        无可用实例时返回 NULL。
  * ============================================================ */
 
-#define TICK_PERIOD_US_DEFAULT  1000U   /* 默认定时器 tick 周期 1ms */
 
 frame_timer_t* frame_timer_hw_create(timer_callback cb, void *ctx,
                                       uint16_t timeout_us,
@@ -133,14 +131,13 @@ frame_timer_t* frame_timer_hw_create(timer_callback cb, void *ctx,
 
     /* ---- 子类字段初始化 ---- */
     inst->hw_id          = hw_id;                  /* 硬件通道号           */
-    inst->tick_period_us = TICK_PERIOD_US_DEFAULT; /* tick 周期            */
+    uint16_t tick_period_us = hw_adapter[hw_id].init(); /* 创建时计算阈值，不入结构体 */
 
     /* us → tick 数转换（向上取整） */
-    inst->base.timeout_threshold = (timeout_us + TICK_PERIOD_US_DEFAULT - 1)
-                                    / TICK_PERIOD_US_DEFAULT;
+    inst->base.timeout_threshold = (timeout_us + tick_period_us - 1)
+                                    / tick_period_us;
 
     /* ---- 配置硬件 ---- */
-    hw_adapter[hw_id].init();
     hw_adapter[hw_id].set_cmp((uint16_t)inst->base.timeout_threshold);
 
     return &inst->base;                    /* 返回基类指针，向上转型        */

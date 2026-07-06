@@ -1,11 +1,5 @@
 .vscode/c_cpp_properties.json
-
-
-frame_timer_hw.o
-main.exe
-main.o
-timer1.o
-packet.o
-build/Debug/outDebug.exe
-packetizer_timeout.o
-
+*.o
+*.exe
+build/
+test/test_packetizer.c

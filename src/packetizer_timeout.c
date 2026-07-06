@@ -10,8 +10,6 @@
 //超时封包器类，继承自packetizer基类
 typedef struct {
     packetizer_t  base;                             //继承packetizer基类
-    //超时封包器特有的属性
-    uint16_t               timeout_ticks;             //超时时间（微秒）
     frame_timer_t          *timer;                   //注入的定时器实例（硬件/软件/模拟均可）
     uint8_t                timer_running;            //定时器是否在运行：0=停，1=运行中
 }packetizer_Timer_t;
@@ -40,7 +38,6 @@ static const packet_ops_t timeout_ops = {
 /**
  * @brief   初始化封包器
  * @param  pkt: 封包器指针
- * @param  timeout: 超时时间
  */
 static void packetizer_Timer_init(packetizer_t *pkt)
 {
@@ -71,7 +68,6 @@ static void packetizer_Timer_reset(packetizer_t *pkt)
     self->base.Rxidx = 0;
     memset(self->base.Rxbuf, 0, sizeof(self->base.Rxbuf));
 
-    self->timeout_ticks=0; //清除当前实例的定时超时上限
     self->timer_running=0; //设置定时器为停止状态
 }
 
@@ -122,20 +118,14 @@ void timeout_timer_callback(void *ctx) {
 
 
 /**
- * @brief 创建一个带超时功能的数据包解析器，一步完成 timer↔pkt 绑定
- * @param timeout_us 帧间超时时间（微秒）
- * @param timer      外部注入的定时器实例（frame_timer_hw_create / frame_timer_sw_create 等）
- *                   封包器不关心定时器实现，只调用 timer->ops 接口
- * @param cb         帧完成回调，一帧完整后自动触发 cb(frame, len)
- *                   若调用时未确定回调可传 NULL，后续通过 set_frame_finish_callback 注册
+ * @brief 创建一个超时封包器，绑定外部定时器
+ * @param timer 外部注入的定时器实例（硬件/软件均可），超时时间由 timer 自己负责
+ * @param cb    帧完成回调，可传 NULL 后续注册
  *
- * 内部自动完成绑定：
- *   - timer->ctx = pkt  （超时回调透传找到封包器）
- *   - pkt->on_frame_finish = cb
- *
+ * 内部自动绑定：timer->ctx = pkt;  pkt->on_frame_finish = cb
  * @return 封包器基类指针，无可用实例时返回 NULL
  */
-packetizer_t* packetizer_timeout_create(uint16_t timeout_us, frame_timer_t *timer,
+packetizer_t* packetizer_timeout_create(frame_timer_t *timer,
                                         frame_finish_callback cb) {
     if (timer == NULL) return NULL;
 
@@ -148,7 +138,6 @@ packetizer_t* packetizer_timeout_create(uint16_t timeout_us, frame_timer_t *time
 
             inst->base.ops          = &timeout_ops;
             inst->timer             = timer;
-            inst->timeout_ticks     = timeout_us;
             inst->base.on_frame_finish = cb;
 
             /* timer ↔ packetizer 双向绑定 */
