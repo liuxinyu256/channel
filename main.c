@@ -18,29 +18,24 @@ static void my_frame_handler(uint8_t *frame, uint16_t len) {
 int main(void) {
     printf("=== Packetizer 封包器框架使用示例 ===\n\n");
 
-    /* 1. 创建定时器（ctx 先 NULL，packetizer_timeout_create 内部绑定） */
-    frame_timer_t *timer = frame_timer_hw_create(
-        timeout_timer_callback,
-        NULL,
-        10000,
-        0
-    );
+    /* 1. 创建硬件定时器 */
+    frame_timer_t *timer = frame_timer_hw_create(0);
     if (timer == NULL) {
         printf("[FAIL] 定时器创建失败\n");
         return 1;
     }
     printf("[OK] 定时器创建成功 (hw_id=0, timeout=10ms)\n");
 
-    /* 2. 创建超时封包器（内部自动：timer->ctx=pkt; pkt->on_frame_finish=cb） */
-    packetizer_t *pkt = packetizer_timeout_create(timer, my_frame_handler);
+    /* 2. 注入定时器，创建封包器 */
+    packetizer_t *pkt = packetizer_timeout_create(timer, 10, my_frame_handler);
     if (pkt == NULL) {
         printf("[FAIL] 封包器创建失败\n");
         frame_timer_hw_destroy(timer);
         return 1;
     }
-    printf("[OK] 超时封包器创建成功（timer↔pkt 已绑定，回调已注册）\n");
+    printf("[OK] 封包器创建成功\n");
 
-    /* 3. 模拟接收字节（硬件串口 ISR 中调用 put_byte） */
+    /* 3. 模拟接收（UART ISR 中调 put_byte） */
     printf("\n--- 模拟接收 ---\n");
     uint8_t test_data[] = { 0xAA, 0xBB, 0xCC, 0xDD };
     for (int i = 0; i < 4; i++) {

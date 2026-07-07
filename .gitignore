@@ -3,3 +3,17 @@
 *.exe
 build/
 test/test_packetizer.c
+build/Debug/channel.o
+build/Debug/frame_timer_hw.o
+build/Debug/frame_timer.o
+build/Debug/outDebug.exe
+build/Debug/packet.o
+build/Debug/packetizer_timeout.o
+build/Debug/timer1.o
+build/Debug/channel.o
+build/Debug/frame_timer_hw.o
+build/Debug/frame_timer.o
+build/Debug/outDebug.exe
+build/Debug/packet.o
+build/Debug/packetizer_timeout.o
+build/Debug/timer1.o

@@ -20,24 +20,17 @@
  *                                 └──────────────┘
  *
  * 使用步骤：
- *   1. pkt = packetizer_timeout_create(timeout, timer)   — 创建实例
- *   2. set_frame_finish_callback(pkt, my_callback)       — 注册帧到回调
- *   3. 串口 ISR 中调用 packetizer_put_byte(pkt, byte)    — 喂字节
- *   4. 帧完成后 my_callback(frame, len) 自动触发          — 收帧
+ *   1. pkt = packetizer_timeout_create(timer, ticks, my_callback)   — 创建实例
+ *   2. 串口 ISR 中调用 packetizer_put_byte(pkt, byte)         — 喂字节
+ *   3. 帧完成后 my_callback(frame, len) 自动触发               — 收帧
  *
  * 回调在定时器 ISR 上下文中执行，上层可在回调中直接拷贝数据。
  */
 
-#include <stdlib.h>
 #include <stdint.h>
 
 /* ---- 接收缓冲区大小（Modbus RTU 最大 256 字节） ---- */
 #define RX_PACKET_BUF_SIZE  256
-
-/* ---- 封包策略枚举（扩展新策略时在此追加） ---- */
-typedef enum {
-    packetizer_type_Timeout,    /* 超时封包策略 */
-} packetizer_type;
 
 /* ---- 帧完成回调：frame=数据指针, len=帧字节数 ---- */
 typedef void (*frame_finish_callback)(uint8_t *frame, uint16_t len);
@@ -66,7 +59,6 @@ typedef struct {
  */
 struct packetizer {
     const packet_ops_t      *ops;            /* 策略操作（基类内部调用）     */
-    packetizer_type          type;           /* 封包策略类型                */
     uint8_t                  Rxbuf[RX_PACKET_BUF_SIZE]; /* 接收缓存        */
     uint16_t                 Rxidx;          /* 缓存写入位置 / 当前帧长度   */
     frame_finish_callback    on_frame_finish;/* 帧完成回调（ISR 中触发）    */

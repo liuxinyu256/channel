@@ -41,9 +41,6 @@ uint8_t packetizer_put_byte(packetizer_t *pkt, uint8_t byte)
  */
 void  set_frame_finish_callback(packetizer_t *pkt, frame_finish_callback cb)
 {
-    if (pkt == NULL || cb == NULL) {
-        return;
-    }
-    pkt->on_frame_finish = cb;
-
+    if (pkt == NULL) return;
+    pkt->on_frame_finish = cb;    /* NULL = 清回调 */
 }

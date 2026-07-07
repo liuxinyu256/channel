@@ -5,8 +5,8 @@
  * 用户只需 #include "packetizer.h" 即可使用全部功能。
  *
  * 使用步骤:
- *   1. timer = frame_timer_hw_create(timeout_timer_callback, NULL, 10000, 0);
- *   2. pkt   = packetizer_timeout_create(timer, my_callback);
+ *   1. timer = frame_timer_hw_create(0);
+ *   2. pkt   = packetizer_timeout_create(timer, 10, my_callback);
  *   3. UART ISR 中: packetizer_put_byte(pkt, byte);
  *   4. 超时后 my_callback(frame, len) 自动触发
  */
@@ -38,17 +38,16 @@ uint8_t packetizer_put_byte(packetizer_t *pkt, uint8_t byte);
 void    set_frame_finish_callback(packetizer_t *pkt, frame_finish_callback cb);
 
 /* ============================================================
- *  超时封包器工厂
+ *  超时封包器（定时器由外部注入）
  * ============================================================ */
-packetizer_t* packetizer_timeout_create(frame_timer_t *timer, frame_finish_callback cb);
+packetizer_t* packetizer_timeout_create(frame_timer_t *timer, uint16_t timeout_ticks,
+                                        frame_finish_callback cb);
 void          packetizer_timeout_destroy(packetizer_t *pkt);
-void          timeout_timer_callback(void *ctx);
 
 /* ============================================================
- *  硬件定时器工厂
+ *  硬件定时器（定时精度由 BSP 层决定）
  * ============================================================ */
-frame_timer_t* frame_timer_hw_create(timer_callback cb, void *ctx,
-                                     uint16_t timeout_us, uint8_t hw_id);
+frame_timer_t* frame_timer_hw_create(uint8_t hw_id);
 void           frame_timer_hw_destroy(frame_timer_t *t);
 void           frame_timer_hw_isr(uint8_t hw_id);
 

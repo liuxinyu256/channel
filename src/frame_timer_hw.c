@@ -5,7 +5,7 @@
  *   frame_timer_hw_inst_t  "继承" frame_timer_t（C 风格：基类作为第一个成员）
  *
  * 字段分层：
- *   基类 frame_timer_t —— ops / cb / ctx / counter / timeout_threshold
+ *   基类 frame_timer_t —— ops / cb / ctx / counter
  *   子类独有           —— hw_id（硬件通道号），tick 周期由 init() 返回，不存
  *
  * counter 驱动方式：
@@ -29,7 +29,7 @@ typedef struct {
     void (*start)    (void);               /* 启动定时器计数                 */
     void (*stop)     (void);               /* 停止定时器计数                 */
     void (*restart)  (void);               /* 重启定时器（清零硬件计数器）    */
-    void (*set_cmp)  (uint16_t ticks);     /* 设置比较值（超时阈值）          */
+    void (*set_cmp)  (uint16_t ticks);     /* 设置定时器周期                  */
     void (*clear_isr_flag)(void);          /* 清除硬件中断标志               */
 } timer_hw_adapter_t;
 
@@ -93,91 +93,73 @@ static void hw_restart(frame_timer_t *t) {
     hw_adapter[self->hw_id].restart();
 }
 
+static void hw_set_callback(frame_timer_t *t, timer_callback cb, void *ctx) {
+    t->cb  = cb;
+    t->ctx = ctx;
+}
+
 /* ---- 硬件定时器的多态操作表 ---- */
 static const frame_timer_ops_t hw_timer_ops = {
-    .start   = hw_start,
-    .stop    = hw_stop,
-    .restart = hw_restart,
+    .start        = hw_start,
+    .stop         = hw_stop,
+    .restart      = hw_restart,
+    .set_callback = hw_set_callback,
 };
 
 /* ============================================================
  *  4. 工厂函数 —— 唯一的对外创建入口
  *
- *  入参：
- *    cb, ctx      - 超时回调（共性参数，存入 base）
- *    timeout_us   - 超时时间（微秒），内部转换为 tick 数存入 base.timeout_threshold
- *    hw_id        - 硬件定时器通道号（平台参数，存入子类）
+ *  入参：hw_id - 硬件定时器通道号（0~3），对应适配器表
  *
- *  返回：基类指针 frame_timer_t*，调用者通过 t->ops 操作。
- *        无可用实例时返回 NULL。
+ *  定时器自由运行，每 tick 触发回调。超时由上层策略判断。
+ *  回调通过 timer->ops->set_callback() 注入。
  * ============================================================ */
 
 
-frame_timer_t* frame_timer_hw_create(timer_callback cb, void *ctx,
-                                      uint16_t timeout_us,
-                                      uint8_t hw_id) {
+frame_timer_t* frame_timer_hw_create(uint8_t hw_id) {
     if (hw_id >= FRAME_TIMER_HW_MAX) return NULL;
     if (hw_occupied_map & (1 << hw_id)) return NULL;
+    if (hw_adapter[hw_id].init == NULL) return NULL;
 
     hw_occupied_map |= (uint8_t)(1U << hw_id);
 
     frame_timer_hw_inst_t *inst = &hw_instances[hw_id];
 
-    /* ---- 基类字段初始化 ---- */
-    inst->base.ops       = &hw_timer_ops;          /* 绑定多态操作表       */
-    inst->base.cb        = cb;                     /* 超时回调             */
-    inst->base.ctx       = ctx;                    /* 回调上下文           */
-    inst->base.counter   = 0;                      /* 计数值从零开始        */
+    inst->base.ops     = &hw_timer_ops;
+    inst->base.cb      = NULL;
+    inst->base.ctx     = NULL;
+    inst->base.counter = 0;
+    inst->hw_id        = hw_id;
 
-    /* ---- 子类字段初始化 ---- */
-    inst->hw_id          = hw_id;                  /* 硬件通道号           */
-    uint16_t tick_period_us = hw_adapter[hw_id].init(); /* 创建时计算阈值，不入结构体 */
+    /* 初始化硬件，定时器自由运行。tick 周期由 BSP 决定，超时由策略判断 */
+    uint16_t tick_period_us = hw_adapter[hw_id].init();
+    hw_adapter[hw_id].set_cmp(1);  /* 自动重载值 = 1，每个 tick 触发 ISR */
 
-    /* us → tick 数转换（向上取整） */
-    inst->base.timeout_threshold = (timeout_us + tick_period_us - 1)
-                                    / tick_period_us;
-
-    /* ---- 配置硬件 ---- */
-    hw_adapter[hw_id].set_cmp((uint16_t)inst->base.timeout_threshold);
-
-    return &inst->base;                    /* 返回基类指针，向上转型        */
+    return &inst->base;
 }
 
 /* ============================================================
  *  5. ISR 入口 —— 由平台中断服务例程调用
  *
- *  职责：
- *    1. 清硬件中断标志
- *    2. 递增 base.counter
- *    3. 达到 base.timeout_threshold 时触发 base.cb
- *
- *  设计要点：
- *    - counter 递增和超时判断都在基类字段上进行，与硬件无关
- *    - 软件定时器的 ISR 等价物（systick 钩子）逻辑完全相同，
- *      只是 counter 递增的触发源不同
+ *  职责：清标志 → 递增 counter → 通知回调。是否超时由策略判断。
  * ============================================================ */
 void frame_timer_hw_isr(uint8_t hw_id) {
     if (!(hw_occupied_map & (1 << hw_id))) return;  /* 未分配，安全忽略    */
 
     frame_timer_hw_inst_t *t = &hw_instances[hw_id];
-    hw_adapter[hw_id].clear_isr_flag();              /* 平台：清中断标志    */
+    hw_adapter[hw_id].clear_isr_flag();
 
-    if (t->base.timeout_threshold == 0) return;      /* 阈值为 0 不计数     */
-    //++t是为了丢弃之前的对字节的累计计数
-    /* ---- 以下逻辑是定时器引擎核心，与硬件无关 ---- */
-    if (++t->base.counter >= t->base.timeout_threshold) {
-        t->base.counter = 0;                         /* 清零，准备下一周期   */
-        if (t->base.cb) t->base.cb(t->base.ctx);     /* 触发超时回调         */
-    }
+    /* 每次 tick 递增计数器，通知上层。是否超时由策略判断 */
+    t->base.counter++;
+    if (t->base.cb) t->base.cb(t->base.ctx);
 }
 
 
 
 /* ============================================================
- *  7. destroy —— 释放定时器资源
+ *  6. destroy —— 释放定时器资源
  *
- *  停止硬件定时器，归还 bitmap 槽位。基类字段无需清理
- *  （下次 create 分配同一槽位时会重新初始化）。
+ *  停止硬件定时器，清回调，归还 bitmap 槽位。
  * ============================================================ */
 void frame_timer_hw_destroy(frame_timer_t *t) {
     if (t == NULL) return;
@@ -185,5 +167,7 @@ void frame_timer_hw_destroy(frame_timer_t *t) {
     uint8_t hw_id = inst->hw_id;
 
     hw_adapter[hw_id].stop();
+    t->cb  = NULL;
+    t->ctx = NULL;
     hw_occupied_map &= (uint8_t)~(1U << hw_id);
 }
