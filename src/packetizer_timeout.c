@@ -105,8 +105,8 @@ void timeout_timer_callback(void *ctx) {
     if (self->base.on_frame_finish) {
         self->base.on_frame_finish(self->base.Rxbuf, self->base.Rxidx);
     }
-
-    packetizer_Timer_reset(&self->base);
+    /* 不自动 reset —— 上层通过 packetizer_push_frame() 释放 Rxbuf
+     * 或在回调中使用 packetizer_reset() 手动释放 */
 }
 
 
