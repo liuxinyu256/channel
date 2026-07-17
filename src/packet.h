@@ -43,7 +43,7 @@ typedef struct {
 
 /* 初始化 / 重置 */
 void     ring_init(ring_t *r);
-void     ring_reset(ring_t *r);              /* rd = wr，丢弃全部 */
+void     ring_reset(ring_t *r);              /* rdidx = wridx，丢弃全部 */
 
 /* 状态查询 */
 uint8_t  ring_empty(const ring_t *r);
@@ -99,7 +99,7 @@ uint8_t  packetizer_put_byte(packetizer_t *pkt, uint8_t byte);
 /* 注册帧完成回调 */
 void     set_frame_finish_callback(packetizer_t *pkt, frame_finish_callback cb);
 
-/* 帧完成时由策略调用：ring→tmp→回调交付→commit */
+/* 帧完成时由策略调用：ring_read → 截断 → 回调交付 */
 uint8_t  packetizer_push_frame(packetizer_t *pkt);
 
 #endif

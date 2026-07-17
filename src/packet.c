@@ -57,16 +57,24 @@ uint8_t ring_put(ring_t *r, uint8_t byte)
     return 0;
 }
 
-/* 批量写入，返回实际写入字节数（满时停止） */
+/* 批量写入，返回实际写入字节数。自动处理回绕，满时截断。 */
 uint16_t ring_write(ring_t *r, const uint8_t *src, uint16_t len)
 {
     if (r == NULL || src == NULL || len == 0) return 0;
-    uint16_t wrote = 0;
-    for (uint16_t i = 0; i < len; i++) {
-        if (ring_put(r, src[i])) break;
-        wrote++;
+
+    uint16_t free = (PKT_BUF_SIZE - 1) - ring_count(r);
+    if (len > free) len = free;
+    if (len == 0) return 0;
+
+    uint16_t tail = PKT_BUF_SIZE - r->wridx;
+    if (len <= tail) {
+        for (uint16_t i = 0; i < len; i++) r->buf[r->wridx + i] = src[i];
+    } else {
+        for (uint16_t i = 0; i < tail; i++) r->buf[r->wridx + i] = src[i];
+        for (uint16_t i = 0; i < len - tail; i++) r->buf[i] = src[tail + i];
     }
-    return wrote;
+    r->wridx = (r->wridx + len) & PKT_BUF_MASK;
+    return len;
 }
 
 /* ---- 消费者 API（读端，推进 rdidx）---- */
