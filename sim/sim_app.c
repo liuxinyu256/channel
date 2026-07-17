@@ -106,7 +106,7 @@ static void show_status(void) {
     frame_timer_sw_poll(g_timer);
 
     uint32_t counter = g_timer ? g_timer->counter : 0;
-    uint16_t rxidx   = g_pkt   ? g_pkt->Rxidx   : 0;
+    uint16_t rxidx   = g_pkt   ? ring_count(&g_pkt->ring) : 0;
 
     printf("\n");
     printf("  ─── Status ───────────────────────────\n");
@@ -114,11 +114,11 @@ static void show_status(void) {
            counter, (unsigned)SIM_TIMEOUT_TICKS,
            SIM_TIMEOUT_TICKS * SIM_TICK_PERIOD_US / 1000);
     printf("  Byte gap:    %d ms\n", g_byte_gap_ms);
-    printf("  Buffer:      %u/%u bytes\n", rxidx, (unsigned)RX_PACKET_BUF_SIZE);
+    printf("  Buffer:      %u/%u bytes\n", rxidx, (unsigned)PKT_BUF_SIZE);
     if (rxidx > 0 && g_pkt) {
         printf("  Data:        ");
         for (uint16_t i = 0; i < rxidx && i < 32; i++) {
-            printf("%02X ", g_pkt->Rxbuf[i]);
+            printf("%02X ", ring_peek_at(&g_pkt->ring, i));
         }
         if (rxidx > 32) printf("...");
         printf("\n");

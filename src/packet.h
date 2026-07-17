@@ -31,7 +31,7 @@
  *   - 满: (wridx + 1) & MASK == rdidx  (留 1 槽区分空/满)
  *   - 可用: (wridx - rdidx) & MASK
  *
- * RX 用法: ISR ring_put → 帧完成 ring_peek → 回调 → ring_commit
+ * RX 用法: ISR ring_put → 帧完成 ring_read → 回调
  * TX 用法: 任务 ring_write → ISR ring_get
  * ============================================================ */
 

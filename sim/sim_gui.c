@@ -136,7 +136,7 @@ static void update_status(void) {
     if (g_timer == NULL || g_pkt == NULL) return;
 
     uint32_t counter = g_timer->counter;
-    uint16_t rxidx   = g_pkt->Rxidx;
+    uint16_t rxidx   = ring_count(&g_pkt->ring);
 
     /* 状态栏 */
     char status[256];

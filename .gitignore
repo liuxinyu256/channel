@@ -17,3 +17,9 @@ build/Debug/outDebug.exe
 build/Debug/packet.o
 build/Debug/packetizer_timeout.o
 build/Debug/timer1.o
+sim/sim_gui.c
+sim/sim_app.c
+sim/sim_gui.c
+test/serial_test.py
+sim/sim_gui.c
+sim/sim_app.c
