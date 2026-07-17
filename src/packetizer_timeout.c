@@ -47,11 +47,8 @@ static void packetizer_Timer_init(packetizer_t *pkt)
     if (self == NULL || self->base.ops == NULL) {
         return;
     }
-    self->timer_running=0; //初始化定时器运行状态为停止
-    self->base.Rxidx=0;    //清空缓冲区字节计数
-    //清空缓冲区
-    memset(self->base.Rxbuf, 0, sizeof(self->base.Rxbuf));
-
+    self->timer_running = 0;
+    ring_init(&self->base.ring);
 }
 
 /**
@@ -64,8 +61,7 @@ static void packetizer_Timer_reset(packetizer_t *pkt)
     packetizer_Timer_t *self = (packetizer_Timer_t *)pkt;
 
     self->timer_running = 0;
-    self->base.Rxidx = 0;
-    memset(self->base.Rxbuf, 0, sizeof(self->base.Rxbuf));
+    ring_reset(&self->base.ring);  /* 丢弃当前帧 */
 }
 
 
@@ -97,16 +93,14 @@ void timeout_timer_callback(void *ctx) {
     /* 没到超时阈值，继续等 */
     if (self->timer->counter < self->timeout_ticks) return;
 
-    /* 超时 → 停定时器 → 帧完成 → 重置 */
+    /* 超时 → 停定时器 → 拷贝帧到输出队列 → 通知上层 */
     if (self->timer && self->timer->ops) {
         self->timer->ops->stop(self->timer);
     }
-    
-    if (self->base.on_frame_finish) {
-        self->base.on_frame_finish(self->base.Rxbuf, self->base.Rxidx);
-    }
-    /* 不自动 reset —— 上层通过 packetizer_push_frame() 释放 Rxbuf
-     * 或在回调中使用 packetizer_reset() 手动释放 */
+
+    /* push_frame 内部已完成字节环→帧队列拷贝，并回调 on_frame_finish */
+    packetizer_push_frame(&self->base);
+    self->timer_running = 0;  /* timer 已停止，同步状态 */
 }
 
 

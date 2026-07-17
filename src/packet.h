@@ -4,107 +4,102 @@
 /**
  * 接收封包器 —— 将字节流组装为完整帧，通过回调推送给上层
  *
- * 数据流（上层视角）：
+ * 数据流：
  *   ┌─────────┐    put_byte()     ┌──────────────┐
  *   │ 串口 ISR │ ──────────────→  │  packetizer  │
  *   └─────────┘                   │  (策略+缓冲)  │
  *                                 └──────┬───────┘
- *                                        │ 帧完成时触发
+ *                                        │ 帧完成
  *                                        ↓
  *                                 on_frame_finish(frame, len)
- *                                        │
- *                                        ↓
- *                                 ┌──────────────┐
- *                                 │ 上层(应用层)   │
- *                                 │ 拷贝/入队/标记 │
- *                                 └──────────────┘
  *
- * 使用步骤：
- *   1. pkt = packetizer_timeout_create(timer, ticks, my_callback)   — 创建实例
- *   2. 串口 ISR 中调用 packetizer_put_byte(pkt, byte)         — 喂字节
- *   3. 帧完成后 my_callback(frame, len) 自动触发               — 收帧
- *
- * 回调在定时器 ISR 上下文中执行，上层可在回调中直接拷贝数据。
+ * 回调在定时器 ISR 上下文中执行，上层应尽快完成拷贝。
  */
 
 #include <stdint.h>
 
-/* ---- 接收缓冲区大小（Modbus RTU 最大 256 字节） ---- */
-#define RX_PACKET_BUF_SIZE      256
+/* ---- 缓冲区大小 ---- */
+#define RX_PACKET_BUF_SIZE      256   /* 最大帧长 */
+#define PKT_BUF_SIZE            512   /* 环形缓冲(2的幂) */
+#define PKT_BUF_MASK            (PKT_BUF_SIZE - 1)
 
-/* ---- 环形输出队列 ---- */
-#define PKT_RING_SIZE           4
-#define PKT_RING_MASK           (PKT_RING_SIZE - 1)
+/* ============================================================
+ *  ring_t — 标准环形缓冲区（RX/TX 通用）
+ *
+ * 生产者写 wridx，消费者读 rdidx。
+ *   - 空: rdidx == wridx
+ *   - 满: (wridx + 1) & MASK == rdidx  (留 1 槽区分空/满)
+ *   - 可用: (wridx - rdidx) & MASK
+ *
+ * RX 用法: ISR ring_put → 帧完成 ring_peek → 回调 → ring_commit
+ * TX 用法: 任务 ring_write → ISR ring_get
+ * ============================================================ */
 
-typedef struct{
-    uint16_t len;
-    uint8_t  data[RX_PACKET_BUF_SIZE];
-}pkt_frame_slot_t;
+typedef struct {
+    uint8_t  buf[PKT_BUF_SIZE];
+    uint16_t wridx;   /* 生产者写入位置 */
+    uint16_t rdidx;   /* 消费者读取位置 */
+} ring_t;
 
-typedef struct{
-    pkt_frame_slot_t slots[PKT_RING_SIZE];
-    volatile uint8_t wr;
-           uint8_t rd;
-    volatile uint8_t drops;  /* 满丢帧计数 */
-}pkt_ring_t;
+/* 初始化 / 重置 */
+void     ring_init(ring_t *r);
+void     ring_reset(ring_t *r);              /* rd = wr，丢弃全部 */
 
-/* ---- 帧完成回调：frame=数据指针, len=帧字节数 ---- */
+/* 状态查询 */
+uint8_t  ring_empty(const ring_t *r);
+uint8_t  ring_full(const ring_t *r);
+uint16_t ring_count(const ring_t *r);
+
+/* 生产者: 写字节 */
+uint8_t  ring_put(ring_t *r, uint8_t byte);                      /* 1 字节 */
+uint16_t ring_write(ring_t *r, const uint8_t *src, uint16_t len); /* 批量  */
+
+/* 消费者: 读字节（推进 rd） */
+uint8_t  ring_get(ring_t *r, uint8_t *out);                       /* 1 字节 */
+uint16_t ring_read(ring_t *r, uint8_t *dst, uint16_t max);        /* 批量  */
+
+/* 消费者: 窥探不推进 rd */
+uint8_t  ring_peek_at(const ring_t *r, uint16_t offset);
+uint16_t ring_peek(ring_t *r, uint8_t *dst, uint16_t max);
+
+/* 消费者: 推进 rd */
+void     ring_skip(ring_t *r, uint16_t n);
+void     ring_commit(ring_t *r);             /* rd = wr */
+
+/* ---- 帧完成回调 ---- */
 typedef void (*frame_finish_callback)(uint8_t *frame, uint16_t len);
 
 typedef struct packetizer packetizer_t;
-typedef struct frame_timer frame_timer_t;  /* 前置声明，供封包器注入定时器 */
+typedef struct frame_timer frame_timer_t;
 
-/**
- * packet_ops_t — 策略操作接口
- *
- * 由各封包策略实现（如超时策略），仅基类 wrapper 内部调用。
- * 上层不直接访问 ops —— 请用 packetizer_init / reset / put_byte 等公开 API。
- */
+/* ---- 策略虚表 ---- */
 typedef struct {
-    void (*init)   (packetizer_t *pkt);  /* 初始化封包器 */
-    void (*reset)  (packetizer_t *pkt);  /* 重置封包器   */
-    void (*on_byte)(packetizer_t *pkt);  /* 收到一个字节，策略更新状态机 */
+    void (*init)   (packetizer_t *pkt);
+    void (*reset)  (packetizer_t *pkt);
+    void (*on_byte)(packetizer_t *pkt);
 } packet_ops_t;
 
-/**
- * packetizer 封包器基类
- *
- * 字段对上层透明，通过公开 API 操作。
- * Rxbuf 是线性缓冲区，帧到后通过 on_frame_finish 回调推送，
- * 推送完自动清零，下一帧从头写入。
- */
+/* ---- 封包器基类 ---- */
 struct packetizer {
-    const packet_ops_t      *ops;            /* 策略操作（基类内部调用）     */
-    uint8_t                  Rxbuf[RX_PACKET_BUF_SIZE]; /* 接收缓存        */
-    uint16_t                 Rxidx;          /* 缓存写入位置 / 当前帧长度   */
-    pkt_ring_t               ring;           /* 帧输出环形队列 (ISR→任务)   */
-    frame_finish_callback    on_frame_finish;/* 帧完成回调（ISR 中触发）    */
+    const packet_ops_t      *ops;
+    ring_t                   ring;
+    frame_finish_callback    on_frame_finish;
 };
 
 /* ============================================================
- *  公开 API（上层通过以下函数操作封包器，不直接访问 struct 成员）
+ *  公开 API
  * ============================================================ */
 
-/* 初始化 / 重置封包器（内部调用策略的 init / reset） */
 void     packetizer_init(packetizer_t *pkt);
 void     packetizer_reset(packetizer_t *pkt);
 
-/* 向封包器喂入一个字节，串口 ISR 中调用。返回 0=成功，1=溢出 */
+/* ISR 中调用，喂入一个字节。返回 0=成功 1=溢出 */
 uint8_t  packetizer_put_byte(packetizer_t *pkt, uint8_t byte);
 
-/* 注册帧完成回调
- * cb 参数为 (frame, len)，frame 指向内部缓冲区，len 为帧长度。
- * 回调在定时器 ISR 中执行，上层应尽快调用 push_frame 或 reset。
- */
+/* 注册帧完成回调 */
 void     set_frame_finish_callback(packetizer_t *pkt, frame_finish_callback cb);
 
-/* ISR内: 将帧(d,n)推入内部环形队列并释放Rxbuf。返回1=成功, 0=ring满 */
-uint8_t  packetizer_push_frame(packetizer_t *pkt, uint8_t *d, uint16_t n);
-
-/* 任务内: 从内部环形队列取帧到buf, 返回帧长(0=空) */
-uint16_t packetizer_get_frame(packetizer_t *pkt, uint8_t *buf);
-
-/* 查询丢帧计数（环形满时未入队的帧数） */
-uint8_t  packetizer_drops(packetizer_t *pkt);
+/* 帧完成时由策略调用：ring→tmp→回调交付→commit */
+uint8_t  packetizer_push_frame(packetizer_t *pkt);
 
 #endif
