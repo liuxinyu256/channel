@@ -114,7 +114,7 @@ void timeout_timer_callback(void *ctx) {
  */
 packetizer_t* packetizer_timeout_create(frame_timer_t *timer,
                                         uint16_t timeout_ticks,
-                                        frame_finish_callback cb) {
+                                        frame_finish_callback cb, void *ctx) {
     if (timer == NULL) return NULL;
 
     for (uint8_t i = 0; i < MAX_TIMEOUT_INSTANCES; i++) {

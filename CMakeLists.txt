@@ -78,6 +78,10 @@ target_link_libraries(test_stress PRIVATE packetizer_core packetizer_sw)
 # ============================================================
 enable_testing()
 add_test(NAME packetizer_test COMMAND test_packetizer)
+
+add_executable(test_hvac hvac/test_pc.c hvac/ac_mock.c hvac/ac.c src/packet.c)
+target_include_directories(test_hvac PRIVATE hvac src .)
+add_test(NAME hvac_test COMMAND test_hvac)
 add_test(NAME stress_quick   COMMAND test_stress -n 1000 -l 64 -q)
 add_test(NAME stress_255     COMMAND test_stress -n 500  -l 255 -q)
 add_test(NAME stress_gap     COMMAND test_stress -n 500  -l 128 -g 1 -q)

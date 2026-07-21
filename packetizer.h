@@ -6,7 +6,7 @@
  *
  * 使用步骤:
  *   1. timer = frame_timer_hw_create(0);
- *   2. pkt   = packetizer_timeout_create(timer, 10, my_callback);
+ *   2. pkt   = packetizer_timeout_create(timer, 10, my_callback, NULL);
  *   3. UART ISR 中: packetizer_put_byte(pkt, byte);
  *   4. 超时后 my_callback(frame, len) 自动触发
  */

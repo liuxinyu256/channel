@@ -84,6 +84,7 @@ struct packetizer {
     const packet_ops_t      *ops;
     ring_t                   ring;
     frame_finish_callback    on_frame_finish;
+    uint8_t                  tmp[PKT_BUF_SIZE];   /* 实例自有帧缓冲 */
 };
 
 /* ============================================================

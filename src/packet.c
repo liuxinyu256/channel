@@ -69,7 +69,7 @@ uint16_t ring_write(ring_t *r, const uint8_t *src, uint16_t len)
     uint16_t tail = PKT_BUF_SIZE - r->wridx;
     if (len <= tail) {
         for (uint16_t i = 0; i < len; i++) r->buf[r->wridx + i] = src[i];
-    } else {
+    } else { //回绕到开头
         for (uint16_t i = 0; i < tail; i++) r->buf[r->wridx + i] = src[i];
         for (uint16_t i = 0; i < len - tail; i++) r->buf[i] = src[tail + i];
     }
@@ -100,7 +100,7 @@ uint16_t ring_read(ring_t *r, uint8_t *dst, uint16_t max)
     uint16_t start = r->rdidx;
     if (start + n <= PKT_BUF_SIZE) {
         for (uint16_t i = 0; i < n; i++) dst[i] = r->buf[start + i];
-    } else {
+    } else { //回绕读出
         uint16_t first = PKT_BUF_SIZE - start;
         for (uint16_t i = 0; i < first; i++) dst[i] = r->buf[start + i];
         for (uint16_t i = 0; i < n - first; i++) dst[first + i] = r->buf[i];
@@ -190,23 +190,18 @@ void set_frame_finish_callback(packetizer_t *pkt, frame_finish_callback cb)
 /* 策略帧完成时调用:
  *   1. ring_read 读出帧数据并释放 ring 空间
  *   2. 截断超长帧（> RX_PACKET_BUF_SIZE）
- *   3. 回调向上层交付帧数据（ISR 上下文）
- *
- * tmp 用静态缓冲（ISR 单线程无重入），不占 ISR 栈。 */
+ *   3. 回调向上层交付帧数据（ISR 上下文） */
 uint8_t packetizer_push_frame(packetizer_t *pkt)
 {
-    static uint8_t tmp[PKT_BUF_SIZE];
-    uint16_t n;
-
     if (pkt == NULL) return 0;
 
-    n = ring_read(&pkt->ring, tmp, PKT_BUF_SIZE);
+    uint16_t n = ring_read(&pkt->ring, pkt->tmp, PKT_BUF_SIZE);
     if (n == 0) return 0;
 
     if (n > RX_PACKET_BUF_SIZE) n = RX_PACKET_BUF_SIZE;
 
     if (pkt->on_frame_finish) {
-        pkt->on_frame_finish(tmp, n);
+        pkt->on_frame_finish(pkt->tmp, n);
     }
     return 1;
 }

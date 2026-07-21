@@ -1,0 +1,33 @@
+void ac_task(void *pv) {
+    ac_device_t *ac = (ac_device_t *)pv;
+    event_t ev;
+
+    for (;;) {
+        xQueueReceive(ac->evt_queue, &ev, portMAX_DELAY);
+        switch (ev.type) {
+        case EVENT_PERIODIC_SEND:
+            if (ac->evt_table->on_periodic_send)
+                ac->evt_table->on_periodic_send(ac);
+            break;
+        case EVENT_RX_FRAME:
+            if (ac->evt_table->on_rx_frame)
+                ac->evt_table->on_rx_frame(ac, ev.data, ev.len);
+            break;
+        case EVENT_CONTROL_CMD:
+            if (ac->evt_table->on_control_cmd)
+                ac->evt_table->on_control_cmd(ac, ev.cmd_val, ev.cmd_arg);
+            break;
+        case EVENT_NEED_ACK:
+            if (ac->evt_table->on_need_ack)
+                ac->evt_table->on_need_ack(ac);
+            break;
+        case EVENT_SCAN_AC:
+            if (ac->evt_table->on_scan)
+                ac->evt_table->on_scan(ac);
+            break;
+        }
+#ifdef FAKE_FREERTOS
+        break;  /* PC 测试: 处理一个事件就退出 */
+#endif
+    }
+}
