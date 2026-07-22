@@ -77,5 +77,5 @@ void ac_post_from_isr(ac_device_t *ac, const event_t *ev,
 
 void ac_set_poll_period(ac_device_t *ac, uint16_t period_ms) {
     ac->poll_period_ms = period_ms;
-    (void)ac;
+    xTimerChangePeriod(ac->poll_timer, pdMS_TO_TICKS(period_ms), 0);
 }
