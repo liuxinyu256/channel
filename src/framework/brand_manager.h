@@ -3,8 +3,9 @@
 #include "ac.h"
 
 void  brand_manager_init(void);
-void  brand_manager_register(const event_handler_t *table);
+void  brand_manager_register(const event_handler_t *table, packetizer_t *packetizer);
 void  brand_manager_start_scan(void);
+void  brand_manager_on_frame(uint8_t *data, uint16_t length);
 void  brand_manager_lock(void);
 int   brand_manager_locked(void);
 const event_handler_t *brand_manager_table(void);
