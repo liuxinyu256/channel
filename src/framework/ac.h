@@ -41,6 +41,7 @@ typedef struct {
 
 /* ---- 事件表 (品牌填空) ---- */
 typedef struct {
+    void (*on_rx_byte)      (uint8_t byte, void *ctx);
     void (*on_periodic_send)(void *ctx);
     int  (*on_rx_frame)     (void *ctx, uint8_t *data, uint16_t len);
     void (*on_control_cmd)  (void *ctx, uint8_t cmd, uint8_t val);
