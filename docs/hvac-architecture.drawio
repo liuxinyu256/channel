@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="26.0.0">
+  <diagram name="HVAC Architecture">
+    <mxGraphModel>
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== 业务层 ===== -->
+        <mxCell id="L1" value="业务层" style="swimlane;startSize=25;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="620" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="b1" value="main.c / hvac_init.c&#xa;hvac_start() 启动入口" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="L1">
+          <mxGeometry x="20" y="40" width="170" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="b2" value="brand_manager.c&#xa;扫描 · 匹配 · 锁定&#xa;rx_cb 入口 / frame 回调" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;" vertex="1" parent="L1">
+          <mxGeometry x="220" y="40" width="180" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="b3" value="ac_gree_example.c&#xa;event_handler_t 品牌填空" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="L1">
+          <mxGeometry x="430" y="40" width="170" height="55" as="geometry"/>
+        </mxCell>
+
+        <!-- 层间箭头 -->
+        <mxCell id="ar1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=2;" edge="1" parent="1" source="b2" target="d1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="350" y="148" />
+              <mxPoint x="195" y="165" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ar1_l" value="event_t 队列" style="edgeLabel;html=1;fontSize=9;fillColor=#ffffff;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="230" y="148" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== 设备层 ===== -->
+        <mxCell id="L2" value="设备层" style="swimlane;startSize=25;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="160" width="620" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="d1" value="ac_device_t&#xa;事件循环 + 5事件虚表分发" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="L2">
+          <mxGeometry x="20" y="35" width="200" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="d2" value="bus_controller_t&#xa;idle + gap_until + TX队列" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="L2">
+          <mxGeometry x="260" y="35" width="200" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="d3" value="FreeRTOS&#xa;Timer 200ms" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="L2">
+          <mxGeometry x="500" y="35" width="100" height="55" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ar2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=2;" edge="1" parent="1" source="d2" target="h1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="360" y="278" />
+              <mxPoint x="155" y="295" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ar2_l" value="phy-&gt;write() / TX" style="edgeLabel;html=1;fontSize=9;fillColor=#ffffff;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="220" y="278" as="geometry"/>
+        </mxCell>
+
+        <!-- RX 反向箭头（右侧） -->
+        <mxCell id="ar3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=2;dashed=1;" edge="1" parent="1" source="h2" target="b2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="610" y="315" />
+              <mxPoint x="620" y="80" />
+              <mxPoint x="580" y="80" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ar3_l" value="brand_on_frame&#xa;(帧完成回调)" style="edgeLabel;html=1;fontSize=9;fontColor=#6c8ebf;fillColor=#ffffff;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="615" y="195" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== 硬件层 ===== -->
+        <mxCell id="L3" value="硬件层" style="swimlane;startSize=25;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="290" width="620" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="h1" value="phy_uart1.c&#xa;RS485 · UART ISR" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=1;" vertex="1" parent="L3">
+          <mxGeometry x="20" y="35" width="160" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="h2" value="packetizer_timeout.c&#xa;ring buffer · 5ms超时封包" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=1;" vertex="1" parent="L3">
+          <mxGeometry x="210" y="35" width="190" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="h3" value="frame_timer_hw.c&#xa;TMR0 1ms tick" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="L3">
+          <mxGeometry x="430" y="35" width="150" height="55" as="geometry"/>
+        </mxCell>
+
+        <!-- 硬件内部 -->
+        <mxCell id="ar4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d6b656;strokeWidth=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="h1" target="h2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar4_l" value="喂字节" style="edgeLabel;html=1;fontSize=8;fillColor=#ffffff;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="185" y="315" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d6b656;strokeWidth=1;dashed=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="h2" target="h3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ar5_l" value="start" style="edgeLabel;html=1;fontSize=8;fillColor=#ffffff;" vertex="1" parent="1" connectable="0">
+          <mxGeometry x="405" y="315" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== 右侧：回调链注释 ===== -->
+        <mxCell id="note" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="680" y="20" width="120" height="380" as="geometry"/>
+        </mxCell>
+        <mxCell id="note_t" value="回调链" style="text;html=1;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="710" y="25" width="60" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="note1" value="① UART ISR&#xa;→ rx_cb&#xa;= brand_on_rx_byte" style="text;html=1;fontSize=9;align=left;" vertex="1" parent="1">
+          <mxGeometry x="690" y="50" width="100" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="note2" value="② TMR0 ISR&#xa;→ on_timeout&#xa;→ push_frame&#xa;→ brand_on_frame" style="text;html=1;fontSize=9;align=left;" vertex="1" parent="1">
+          <mxGeometry x="690" y="95" width="100" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="note3" value="③ brand_on_frame&#xa;→ AC 队列&#xa;+ bus_on_rx_done" style="text;html=1;fontSize=9;align=left;" vertex="1" parent="1">
+          <mxGeometry x="690" y="155" width="100" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="note4" value="④ AC task&#xa;→ evt_table&#xa;分发事件" style="text;html=1;fontSize=9;align=left;" vertex="1" parent="1">
+          <mxGeometry x="690" y="205" width="100" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="note5" value="⑤ TX task&#xa;→ idle&amp;gap check&#xa;→ phy.write" style="text;html=1;fontSize=9;align=left;" vertex="1" parent="1">
+          <mxGeometry x="690" y="250" width="100" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="note6" value="⑥ THR_EMPTY&#xa;→ 链式发送&#xa;→ bus_on_tx_done" style="text;html=1;fontSize=9;align=left;" vertex="1" parent="1">
+          <mxGeometry x="690" y="300" width="100" height="45" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

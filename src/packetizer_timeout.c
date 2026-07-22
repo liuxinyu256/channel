@@ -1,138 +1,80 @@
-/**
- * 文件名: packetizer_timeout.c
- * 描述: 超时封包器实现，基于定时器的封包策略，适用于帧间隔长的场景比如说10ms的帧间隔
- *
- */
-#include "packet.h"
-#include "frame_timer.h"
+/********************************** (C) COPYRIGHT *******************************
+ * File Name          : packetizer_timeout.c
+ * Description        : 超时封包器 —— 注入 frame_timer，bitmap 实例池 (最多4个)
+ *******************************************************************************/
+
+#include "packetizer_timeout.h"
 #include <string.h>
 
-//超时封包器类，继承自packetizer基类
 typedef struct {
-    packetizer_t  base;
-    frame_timer_t          *timer;
-    uint16_t               timeout_ticks;   /* 超时阈值（tick 数），策略判断 */
-    uint8_t                timer_running;   /* 定时器是否在运行：0=停，1=运行中 */
-}packetizer_Timer_t;
+    packetizer_t   base;
+    frame_timer_t *timer;
+    uint16_t       timeout_ticks;
+    uint8_t        timer_running;
+} packetizer_Timer_t;
 
-#define MAX_TIMEOUT_INSTANCES  4 //最大超时封包器实例数量
+#define MAX_INST  4
+static packetizer_Timer_t instances[MAX_INST];
+static uint8_t            occupied_map = 0U;
 
-static packetizer_Timer_t timeout_instance[MAX_TIMEOUT_INSTANCES]; //超时封包器实例
-static uint8_t            timeout_occupied_map =0U; //超时封包器实例占用情况
-
-
-static void packetizer_Timer_init(packetizer_t *pkt);
-static void packetizer_Timer_reset(packetizer_t *pkt);
-static void packetizer_Timer_on_byte(packetizer_t *pkt);
-
-/* ---- ops表 ---- */
-static const packet_ops_t timeout_ops = {
-    .init    = packetizer_Timer_init,
-    .reset   = packetizer_Timer_reset,
-    .on_byte = packetizer_Timer_on_byte,
-};
-
-
-
-
-//packet_ops_t中操作接口的超时封包器类实现
-/**
- * @brief   初始化封包器
- * @param  pkt: 封包器指针
- */
-static void packetizer_Timer_init(packetizer_t *pkt)
-{
-    packetizer_Timer_t *self = (packetizer_Timer_t *)pkt;
-
-    if (self == NULL || self->base.ops == NULL) {
-        return;
-    }
-    self->timer_running = 0;
-    ring_init(&self->base.ring);
+/* ---- ops ---- */
+static void to_init(packetizer_t *pkt) {
+    packetizer_Timer_t *s = (packetizer_Timer_t *)pkt;
+    s->timer_running = 0;
+    ring_init(&pkt->ring);
 }
 
-/**
- * @brief   重置封包器
- * @param  pkt: 需要重置的封包器指针
- */
-static void packetizer_Timer_reset(packetizer_t *pkt)
-{
-    if (pkt == NULL || pkt->ops == NULL) return;
-    packetizer_Timer_t *self = (packetizer_Timer_t *)pkt;
-
-    self->timer_running = 0;
-    ring_reset(&self->base.ring);  /* 丢弃当前帧 */
+static void to_reset(packetizer_t *pkt) {
+    packetizer_Timer_t *s = (packetizer_Timer_t *)pkt;
+    if (s->timer && s->timer->ops) s->timer->ops->stop(s->timer);
+    s->timer_running = 0;
+    ring_reset(&pkt->ring);  /* 丢弃当前帧 */
 }
 
-
-/**
-*  基类方法 on_byte的实现
-*  接收到一字节应该怎么处理
-*/
-static void packetizer_Timer_on_byte(packetizer_t *pkt) //接收到一个字节，进行处理
-{
-
-    if (pkt == NULL || pkt->ops == NULL) {
-        return;
-    }
-    packetizer_Timer_t *self =(packetizer_Timer_t *)pkt; //获取超时封包器
-    /* 首字节启动定时器，后续字节清零计数重新计时 */
-    if (!self->timer_running) {
-        self->timer->ops->start(self->timer);
-        self->timer_running = 1;
+static void to_on_byte(packetizer_t *pkt) {
+    packetizer_Timer_t *s = (packetizer_Timer_t *)pkt;
+    if (!s->timer_running) {
+        if (s->timer && s->timer->ops) s->timer->ops->start(s->timer);
+        s->timer_running = 1;
     } else {
-        self->timer->ops->restart(self->timer);
+        if (s->timer && s->timer->ops) s->timer->ops->restart(s->timer);
     }
 }
 
-/* 定时中断回调 —— 每次 tick 判定是否超时 */
-void timeout_timer_callback(void *ctx) {
-    if (ctx == NULL) return;
-    packetizer_Timer_t *self = (packetizer_Timer_t *)ctx;
+static const packet_ops_t timeout_ops = { to_init, to_reset, to_on_byte };
 
-    /* 没到超时阈值，继续等 */
-    if (self->timer->counter < self->timeout_ticks) return;
+/* ---- 定时器 tick 回调 ---- */
+static void on_timeout(void *ctx) {
+    packetizer_Timer_t *s = (packetizer_Timer_t *)ctx;
+    if (s == NULL || s->timer == NULL) return;
+    if (s->timer->counter < s->timeout_ticks) return;
 
-    /* 超时 → 停定时器 → 拷贝帧到输出队列 → 通知上层 */
-    if (self->timer && self->timer->ops) {
-        self->timer->ops->stop(self->timer);
-    }
+    if (s->timer->ops) s->timer->ops->stop(s->timer);
 
-    /* push_frame 内部已完成字节环→帧队列拷贝，并回调 on_frame_finish */
-    packetizer_push_frame(&self->base);
-    self->timer_running = 0;  /* timer 已停止，同步状态 */
+    /* 从字节环拷到输出队列，push_frame 内部回调 on_frame_finish */
+    packetizer_push_frame(&s->base);
+    s->timer_running = 0;  /* timer 已停止，同步状态 */
 }
 
-
-/**
- * @brief 创建一个超时封包器，绑定外部定时器
- * @param timer 外部注入的定时器实例（硬件/软件均可），超时时间由 timer 自己负责
- * @param cb    帧完成回调，可传 NULL 后续注册
- *
- * 内部自动绑定：timer->ctx = pkt;  pkt->on_frame_finish = cb
- * @return 封包器基类指针，无可用实例时返回 NULL
- */
+/* ---- 工厂 ---- */
 packetizer_t* packetizer_timeout_create(frame_timer_t *timer,
                                         uint16_t timeout_ticks,
-                                        frame_finish_callback cb, void *ctx) {
+                                        frame_finish_callback cb) {
+    uint8_t i;
     if (timer == NULL) return NULL;
 
-    for (uint8_t i = 0; i < MAX_TIMEOUT_INSTANCES; i++) {
-        if (!(timeout_occupied_map & (1 << i))) {
-            timeout_occupied_map |= (1 << i);
-
-            packetizer_Timer_t *inst = &timeout_instance[i];
+    for (i = 0; i < MAX_INST; i++) {
+        if (!(occupied_map & (1 << i))) {
+            occupied_map |= (uint8_t)(1U << i);
+            packetizer_Timer_t *inst = &instances[i];
             memset(inst, 0, sizeof(*inst));
-
-            inst->base.ops          = &timeout_ops;
-            inst->timer             = timer;
-            inst->timeout_ticks     = timeout_ticks;
+            inst->base.ops            = &timeout_ops;
+            inst->timer               = timer;
+            inst->timeout_ticks       = timeout_ticks;
             inst->base.on_frame_finish = cb;
 
-            /* timer ↔ packetizer 双向绑定 */
-            if (timer->ops && timer->ops->set_callback) {
-                timer->ops->set_callback(timer, timeout_timer_callback, &inst->base);
-            }
+            if (timer->ops && timer->ops->set_callback)
+                timer->ops->set_callback(timer, on_timeout, &inst->base);
 
             return &inst->base;
         }
@@ -140,22 +82,19 @@ packetizer_t* packetizer_timeout_create(frame_timer_t *timer,
     return NULL;
 }
 
+/* ---- 销毁 ---- */
 void packetizer_timeout_destroy(packetizer_t *pkt) {
+    uint8_t i;
     if (pkt == NULL) return;
-
-    for (uint8_t i = 0; i < MAX_TIMEOUT_INSTANCES; i++) {
-        if (&timeout_instance[i].base == pkt) {
-            packetizer_Timer_t *self = &timeout_instance[i];
-            /* 解除 timer→pkt 绑定 */
-            if (self->timer && self->timer->ops && self->timer->ops->set_callback) {
-                self->timer->ops->set_callback(self->timer, NULL, NULL);
-            }
-            self->timer      = NULL;
-            self->base.on_frame_finish = NULL;
-            timeout_occupied_map &= (uint8_t)~(1U << i);
+    for (i = 0; i < MAX_INST; i++) {
+        if (&instances[i].base == pkt) {
+            packetizer_Timer_t *s = &instances[i];
+            if (s->timer && s->timer->ops && s->timer->ops->set_callback)
+                s->timer->ops->set_callback(s->timer, NULL, NULL);
+            s->timer               = NULL;
+            s->base.on_frame_finish = NULL;
+            occupied_map &= (uint8_t)~(1U << i);
             return;
         }
     }
 }
-
-

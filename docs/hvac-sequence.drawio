@@ -1,0 +1,191 @@
+<mxfile>
+  <diagram id="seqlayout" name="事件流转时序">
+    <mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="timer" value="FreeRTOS Timer" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;size=40;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="100" height="2290" as="geometry"/>
+        </mxCell>
+        <mxCell id="actask" value="AC Task" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;size=40;" vertex="1" parent="1">
+          <mxGeometry x="240" y="40" width="100" height="2290" as="geometry"/>
+        </mxCell>
+        <mxCell id="brand" value="brand_manager" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;size=40;" vertex="1" parent="1">
+          <mxGeometry x="440" y="40" width="100" height="2290" as="geometry"/>
+        </mxCell>
+        <mxCell id="tx" value="TX Task / bus" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;size=40;" vertex="1" parent="1">
+          <mxGeometry x="640" y="40" width="100" height="2290" as="geometry"/>
+        </mxCell>
+        <mxCell id="uart" value="UART ISR" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;size=40;" vertex="1" parent="1">
+          <mxGeometry x="840" y="40" width="100" height="2290" as="geometry"/>
+        </mxCell>
+        <mxCell id="pkt" value="packetizer" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;size=40;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="40" width="100" height="2290" as="geometry"/>
+        </mxCell>
+        <mxCell id="tmr" value="TMR0 ISR" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;size=40;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="40" width="100" height="2290" as="geometry"/>
+        </mxCell>
+        <mxCell id="ac" value="External AC" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;size=40;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="40" width="100" height="2290" as="geometry"/>
+        </mxCell>
+        <mxCell id="act0" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;fillColor=#ffffff;" vertex="1" parent="uart">
+          <mxGeometry x="45" y="480" width="10" height="260" as="geometry"/>
+        </mxCell>
+        <mxCell id="act1" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;fillColor=#ffffff;" vertex="1" parent="brand">
+          <mxGeometry x="45" y="380" width="10" height="610" as="geometry"/>
+        </mxCell>
+        <mxCell id="act2" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;fillColor=#ffffff;" vertex="1" parent="brand">
+          <mxGeometry x="45" y="1040" width="10" height="810" as="geometry"/>
+        </mxCell>
+        <mxCell id="act3" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;fillColor=#ffffff;" vertex="1" parent="actask">
+          <mxGeometry x="45" y="150" width="10" height="2100" as="geometry"/>
+        </mxCell>
+        <mxCell id="act4" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;fillColor=#ffffff;" vertex="1" parent="tx">
+          <mxGeometry x="45" y="430" width="10" height="1820" as="geometry"/>
+        </mxCell>
+        <mxCell id="act5" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;fillColor=#ffffff;" vertex="1" parent="ac">
+          <mxGeometry x="45" y="530" width="10" height="1720" as="geometry"/>
+        </mxCell>
+        <mxCell id="act6" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;fillColor=#ffffff;" vertex="1" parent="pkt">
+          <mxGeometry x="45" y="690" width="10" height="1560" as="geometry"/>
+        </mxCell>
+        <mxCell id="act7" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;fillColor=#ffffff;" vertex="1" parent="tmr">
+          <mxGeometry x="45" y="790" width="10" height="1460" as="geometry"/>
+        </mxCell>
+        <mxCell id="act8" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;fillColor=#ffffff;" vertex="1" parent="uart">
+          <mxGeometry x="45" y="1390" width="10" height="860" as="geometry"/>
+        </mxCell>
+        <mxCell id="note0" value="SCAN_AC 启动扫描" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="310" y="110" width="120" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="m1" value="ac_post(EVENT_SCAN_AC)" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0.5;exitY=0.0655;entryX=1;entryY=0.0;" edge="1" parent="1" source="brand" target="act3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m2" value="scan_start → ev_scan → g_scanning=1" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.0238;entryX=1;entryY=0.0381;" edge="1" parent="1" source="act3" target="act3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="350" y="240"/><mxPoint x="350" y="270"/></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note3" value="PERIODIC_SEND 周期轮询(扫描中)" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="110" y="290" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="m4" value="poll_cb → ac_post(PERIODIC_SEND)" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0.5;exitY=0.1441;entryX=0;entryY=0.0857;" edge="1" parent="1" source="timer" target="act3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m5" value="scan_periodic → ev_periodic" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.1095;entryX=0;entryY=0.0;" edge="1" parent="1" source="act3" target="act1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m6" value="bus_send(扫描帧 AA 01 FF...)" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.082;entryX=0;entryY=0.0;" edge="1" parent="1" source="act1" target="act4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m7" value="phy.write(sending=1)" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.0275;entryX=0;entryY=0.0;" edge="1" parent="1" source="act4" target="act0">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m8" value="RS485 TX: 扫描帧" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.1923;entryX=0;entryY=0.0;" edge="1" parent="1" source="act0" target="act5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="note9" value="RX_FRAME 接收应答 → 匹配锁定" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1510" y="600" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="m10" value="RS485 RX: 应答帧" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0;exitY=0.064;entryX=1;entryY=0.6154;" edge="1" parent="1" source="act5" target="act0">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m11" value="packetizer_put_byte ×N" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.8077;entryX=0;entryY=0.0;" edge="1" parent="1" source="act0" target="act6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m12" value="bus_on_rx_byte → idle=0" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;curved=0;rounded=0;strokeColor=#999999;fontColor=#999999;exitX=0;exitY=1.0;entryX=1;entryY=0.1703;" edge="1" parent="1" source="act0" target="act4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m13" value="to_on_byte → start/restart" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.0641;entryX=0;entryY=0.0;" edge="1" parent="1" source="act6" target="act7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m14" value="5ms → on_timeout" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0;exitY=0.0342;entryX=1;entryY=0.0962;" edge="1" parent="1" source="act7" target="act6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m15" value="push_frame → brand_on_frame" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0;exitY=0.1282;entryX=1;entryY=0.8361;" edge="1" parent="1" source="act6" target="act1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m16" value="xQueueSendFromISR(EVENT_RX_FRAME)" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0;exitY=0.918;entryX=1;entryY=0.3762;" edge="1" parent="1" source="act1" target="act3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m17" value="bus_on_rx_done → idle=1" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;curved=0;rounded=0;strokeColor=#999999;fontColor=#999999;exitX=1;exitY=1.0;entryX=0;entryY=0.3077;" edge="1" parent="1" source="act1" target="act4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m18" value="scan_rx_frame → ev_rx_frame → match!" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.4238;entryX=0;entryY=0.0;" edge="1" parent="1" source="act3" target="act2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m19" value="lock + evt_table = gree_table" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.4476;entryX=1;entryY=0.4619;" edge="1" parent="1" source="act3" target="act3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="350" y="1130"/><mxPoint x="350" y="1160"/></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note20" value="PERIODIC_SEND 周期轮询(锁定后)" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="110" y="1180" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="m21" value="ac_post(PERIODIC_SEND)" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0.5;exitY=0.5328;entryX=0;entryY=0.5095;" edge="1" parent="1" source="timer" target="act3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m22" value="evt_table → ev_periodic (g_scanning=0)" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.5333;entryX=1;entryY=0.5476;" edge="1" parent="1" source="act3" target="act3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="350" y="1310"/><mxPoint x="350" y="1340"/></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m23" value="bus_send(查询帧 AA 01 20...)" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.5667;entryX=0;entryY=0.5;" edge="1" parent="1" source="act3" target="act4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m24" value="phy.write(sending=1)" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.5275;entryX=0;entryY=0.0;" edge="1" parent="1" source="act4" target="act8">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m25" value="RS485 TX: 查询帧" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.0581;entryX=0;entryY=0.5291;" edge="1" parent="1" source="act8" target="act5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="note26" value="RX_FRAME 接收查询应答" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1510" y="1510" width="135" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="m27" value="RS485 RX: 查询应答" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0;exitY=0.593;entryX=1;entryY=0.186;" edge="1" parent="1" source="act5" target="act8">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m28" value="packetizer_put_byte ×N" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.2442;entryX=0;entryY=0.5833;" edge="1" parent="1" source="act8" target="act6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m29" value="start/restart" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.6154;entryX=0;entryY=0.589;" edge="1" parent="1" source="act6" target="act7">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m30" value="on_timeout" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0;exitY=0.6233;entryX=1;entryY=0.6474;" edge="1" parent="1" source="act7" target="act6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m31" value="brand_on_frame" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0;exitY=0.6795;entryX=1;entryY=0.8765;" edge="1" parent="1" source="act6" target="act2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m32" value="EVENT_RX_FRAME" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0;exitY=0.9383;entryX=1;entryY=0.7857;" edge="1" parent="1" source="act2" target="act3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m33" value="bus_on_rx_done" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;curved=0;rounded=0;strokeColor=#999999;fontColor=#999999;exitX=1;exitY=1.0;entryX=0;entryY=0.7802;" edge="1" parent="1" source="act2" target="act4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m34" value="ev_rx_frame → update state" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.8333;entryX=1;entryY=0.8476;" edge="1" parent="1" source="act3" target="act3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="350" y="1940"/><mxPoint x="350" y="1970"/></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="note35" value="CONTROL_CMD 外部控制" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="310" y="1990" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="m36" value="ac_post(EVENT_CONTROL_CMD)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;curved=0;rounded=0;exitX=0.5;exitY=0.8865;entryX=1;entryY=0.8952;" edge="1" parent="1" source="brand" target="act3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m37" value="ev_control → build → bus_send" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.919;entryX=1;entryY=0.9333;" edge="1" parent="1" source="act3" target="act3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="350" y="2120"/><mxPoint x="350" y="2150"/></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m38" value="bus_send(控制帧)" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.9524;entryX=0;entryY=0.9451;" edge="1" parent="1" source="act3" target="act4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="m39" value="RS485 TX: 控制帧" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;curved=0;rounded=0;exitX=1;exitY=0.9725;entryX=0;entryY=0.9709;" edge="1" parent="1" source="act4" target="act5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

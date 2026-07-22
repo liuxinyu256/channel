@@ -1,15 +1,12 @@
+/********************************** (C) COPYRIGHT *******************************
+ * File Name          : packet.c
+ * Description        : 接收封包器基类实现
+ *******************************************************************************/
+
 #include "packet.h"
 
 /* ============================================================
  *  ring_t 实现 —— 标准环形缓冲区（RX/TX 通用）
- *
- *  布局: buf[PKT_BUF_SIZE], 2 的幂，掩码定位
- *  指针: wridx(生产者写)  rdidx(消费者读)
- *  判空: rdidx == wridx
- *  判满: (wridx + 1) & MASK == rdidx  (留 1 槽防混淆)
- *  可用: (wridx - rdidx) & MASK
- *
- *  RX 用法见 packetizer_push_frame 注释
  * ============================================================ */
 
 void ring_init(ring_t *r)
@@ -19,14 +16,11 @@ void ring_init(ring_t *r)
     r->rdidx = 0;
 }
 
-/* 丢弃全部未读数据 */
 void ring_reset(ring_t *r)
 {
     if (r == NULL) return;
     r->rdidx = r->wridx;
 }
-
-/* ---- 状态查询 ---- */
 
 uint8_t ring_empty(const ring_t *r)
 {
@@ -46,9 +40,8 @@ uint16_t ring_count(const ring_t *r)
     return (r->wridx - r->rdidx) & PKT_BUF_MASK;
 }
 
-/* ---- 生产者 API（写端，推进 wridx）---- */
+/* ---- 生产者 ---- */
 
-/* 写入 1 字节，满返回 1 */
 uint8_t ring_put(ring_t *r, uint8_t byte)
 {
     if (r == NULL || ring_full(r)) return 1;
@@ -57,29 +50,19 @@ uint8_t ring_put(ring_t *r, uint8_t byte)
     return 0;
 }
 
-/* 批量写入，返回实际写入字节数。自动处理回绕，满时截断。 */
 uint16_t ring_write(ring_t *r, const uint8_t *src, uint16_t len)
 {
     if (r == NULL || src == NULL || len == 0) return 0;
-
-    uint16_t free = (PKT_BUF_SIZE - 1) - ring_count(r);
-    if (len > free) len = free;
-    if (len == 0) return 0;
-
-    uint16_t tail = PKT_BUF_SIZE - r->wridx;
-    if (len <= tail) {
-        for (uint16_t i = 0; i < len; i++) r->buf[r->wridx + i] = src[i];
-    } else { //回绕到开头
-        for (uint16_t i = 0; i < tail; i++) r->buf[r->wridx + i] = src[i];
-        for (uint16_t i = 0; i < len - tail; i++) r->buf[i] = src[tail + i];
+    uint16_t wrote = 0;
+    for (uint16_t i = 0; i < len; i++) {
+        if (ring_put(r, src[i])) break;
+        wrote++;
     }
-    r->wridx = (r->wridx + len) & PKT_BUF_MASK;
-    return len;
+    return wrote;
 }
 
-/* ---- 消费者 API（读端，推进 rdidx）---- */
+/* ---- 消费者（推进 rd）---- */
 
-/* 读出 1 字节，空返回 1 */
 uint8_t ring_get(ring_t *r, uint8_t *out)
 {
     if (r == NULL || out == NULL || ring_empty(r)) return 1;
@@ -88,8 +71,6 @@ uint8_t ring_get(ring_t *r, uint8_t *out)
     return 0;
 }
 
-/* 批量读出 max 字节到 dst，返回实际读出数，推进 rdidx。
-   自动处理回绕，dst 必须足够大。 */
 uint16_t ring_read(ring_t *r, uint8_t *dst, uint16_t max)
 {
     if (r == NULL || dst == NULL || max == 0) return 0;
@@ -100,7 +81,7 @@ uint16_t ring_read(ring_t *r, uint8_t *dst, uint16_t max)
     uint16_t start = r->rdidx;
     if (start + n <= PKT_BUF_SIZE) {
         for (uint16_t i = 0; i < n; i++) dst[i] = r->buf[start + i];
-    } else { //回绕读出
+    } else {
         uint16_t first = PKT_BUF_SIZE - start;
         for (uint16_t i = 0; i < first; i++) dst[i] = r->buf[start + i];
         for (uint16_t i = 0; i < n - first; i++) dst[first + i] = r->buf[i];
@@ -109,9 +90,8 @@ uint16_t ring_read(ring_t *r, uint8_t *dst, uint16_t max)
     return n;
 }
 
-/* ---- 消费者 API（窥探，不推进 rdidx）---- */
+/* ---- 消费者（不推进 rd）---- */
 
-/* 批量读出但不推进 rdidx，用于 RX 帧交付（回调后 commit） */
 uint16_t ring_peek(ring_t *r, uint8_t *dst, uint16_t max)
 {
     if (r == NULL || dst == NULL || max == 0) return 0;
@@ -130,21 +110,18 @@ uint16_t ring_peek(ring_t *r, uint8_t *dst, uint16_t max)
     return n;
 }
 
-/* 窥探 offset 偏移处的单字节（调试用），offset 从 rdidx 起算，自动回绕 */
 uint8_t ring_peek_at(const ring_t *r, uint16_t offset)
 {
     if (r == NULL) return 0;
     return r->buf[(r->rdidx + offset) & PKT_BUF_MASK];
 }
 
-/* 跳过 n 字节（推进 rdidx 但不拷出） */
 void ring_skip(ring_t *r, uint16_t n)
 {
     if (r == NULL) return;
     r->rdidx = (r->rdidx + n) & PKT_BUF_MASK;
 }
 
-/* 提交（rdidx = wridx），RX 帧交付完成后调用，释放缓冲空间 */
 void ring_commit(ring_t *r)
 {
     if (r == NULL) return;
@@ -153,11 +130,6 @@ void ring_commit(ring_t *r)
 
 /* ============================================================
  *  packetizer 基类实现
- *
- *  数据流:
- *    ISR: put_byte → ring_put (写端)
- *    策略判定帧完成 → push_frame:
- *      ring_read → 截断 → 回调交付
  * ============================================================ */
 
 void packetizer_init(packetizer_t *pkt)
@@ -172,7 +144,6 @@ void packetizer_reset(packetizer_t *pkt)
     pkt->ops->reset(pkt);
 }
 
-/* ISR 中调用：先写 ring，再通知策略更新状态机。满时返回 1 */
 uint8_t packetizer_put_byte(packetizer_t *pkt, uint8_t byte)
 {
     if (pkt == NULL || pkt->ops == NULL) return 1;
@@ -187,21 +158,19 @@ void set_frame_finish_callback(packetizer_t *pkt, frame_finish_callback cb)
     pkt->on_frame_finish = cb;
 }
 
-/* 策略帧完成时调用:
- *   1. ring_read 读出帧数据并释放 ring 空间
- *   2. 截断超长帧（> RX_PACKET_BUF_SIZE）
- *   3. 回调向上层交付帧数据（ISR 上下文） */
 uint8_t packetizer_push_frame(packetizer_t *pkt)
 {
     if (pkt == NULL) return 0;
 
-    uint16_t n = ring_read(&pkt->ring, pkt->tmp, PKT_BUF_SIZE);
+    static uint8_t tmp[PKT_BUF_SIZE];
+    uint16_t n = ring_read(&pkt->ring, tmp, PKT_BUF_SIZE);
     if (n == 0) return 0;
 
     if (n > RX_PACKET_BUF_SIZE) n = RX_PACKET_BUF_SIZE;
 
+
     if (pkt->on_frame_finish) {
-        pkt->on_frame_finish(pkt->tmp, n);
+        pkt->on_frame_finish(tmp, n);
     }
     return 1;
 }
