@@ -92,6 +92,7 @@ static const event_handler_t gree_table = {
     .on_rx_byte       = on_rx_byte,
     .on_periodic_send = ev_periodic,
     .on_rx_frame      = ev_rx_frame,
+    .on_rx_isr        = NULL,   /* 暂无紧急帧 */
     .on_control_cmd   = ev_control,
     .on_need_ack      = ev_ack,
     .on_scan          = ev_scan,

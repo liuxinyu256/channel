@@ -31,9 +31,20 @@ static struct {
 /* ---- 扫描期 evt_table 的持有者 ---- */
 static const event_handler_t *g_evt_table;
 
-/* ---- 帧入口(ISR) → AC 模块队列 ---- */
+/* ---- 帧入口(ISR): 紧急帧直接应答, 普通帧入队 ---- */
 void brand_manager_on_frame(uint8_t *data, uint16_t length)
 {
+    const event_handler_t *handler = g_evt_table;
+
+    /* 1. 紧急检查(ISR 中直接处理, <1.5ms 应答) */
+    if (handler && handler->on_rx_isr) {
+        if (handler->on_rx_isr(&g_brand.gw, data, length)) {
+            bus_on_rx_done(&g_brand.bus);
+            return;   /* 已应急处理, 不入队 */
+        }
+    }
+
+    /* 2. 普通处理 → 入队 */
     BaseType_t woken = pdFALSE;
     event_t event = { .type = EVENT_RX_FRAME, .data = data, .len = length };
     xQueueSendFromISR(g_brand.queue, &event, &woken);
@@ -181,6 +192,7 @@ const event_handler_t brand_manager_scan_table = {
     .on_rx_byte       = NULL,
     .on_periodic_send = scan_periodic,
     .on_rx_frame      = scan_rx_frame,
+    .on_rx_isr        = NULL,   /* 扫描期不紧急 */
     .on_control_cmd   = scan_control,
     .on_need_ack      = scan_ack,
     .on_scan          = scan_start,
