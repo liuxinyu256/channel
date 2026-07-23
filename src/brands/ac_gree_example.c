@@ -52,7 +52,7 @@ static void on_rx_byte(uint8_t byte, void *ctx)
 
 /* ---- 事件 ---- */
 static void ev_periodic(void *ctx) {
-    ac_runtime_t *ac = (ac_runtime_t *)ctx;
+    gateway_device_t *ac = (gateway_device_t *)ctx;
     if (g_scanning) {
         uint8_t f[] = { 0xAA, 0x01, 0xFF, 0x00, 0x00, 0x55 };
         bus_send(ac->bus, f, 6);
@@ -63,7 +63,7 @@ static void ev_periodic(void *ctx) {
 }
 
 static int ev_rx_frame(void *ctx, uint8_t *d, uint16_t n) {
-    ac_runtime_t *ac = (ac_runtime_t *)ctx;
+    gateway_device_t *ac = (gateway_device_t *)ctx;
     if (n < 6 || d[0] != 0xAA || d[5] != 0x55) return 0;
 
     if (g_scanning) {
@@ -79,7 +79,7 @@ static int ev_rx_frame(void *ctx, uint8_t *d, uint16_t n) {
 }
 
 static void ev_control(void *ctx, uint8_t cmd, uint8_t val) {
-    ac_runtime_t *ac = (ac_runtime_t *)ctx;
+    gateway_device_t *ac = (gateway_device_t *)ctx;
     uint8_t f[8];
     uint8_t n = build(cmd, val, f);
     if (n) bus_send(ac->bus, f, n);

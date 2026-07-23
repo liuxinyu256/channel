@@ -9,7 +9,7 @@ extern const event_handler_t brand_manager_scan_table;
 static struct {
     bus_controller_t    bus;
     phy_driver_t       *phy;
-    ac_runtime_t         ac_device;
+    gateway_device_t         ac_device;
     const brand_config_t *configs[MAX_BRANDS];
     const brand_config_t *active;
     uint8_t             count;
@@ -36,7 +36,7 @@ static void switch_to(uint8_t idx)
     g_brand.bus.phy->set_rx_cb(g_brand.bus.phy,
         g_brand.active->evt_table->on_rx_byte, &g_brand.bus);
 
-    ac_runtime_t *ac = &g_brand.ac_device;
+    gateway_device_t *ac = &g_brand.ac_device;
     ac->evt_table = &brand_manager_scan_table;
 
     g_brand.active->evt_table->on_scan(ac);
@@ -96,7 +96,7 @@ static int scan_rx_frame(void *context, uint8_t *data, uint16_t length)
 
     if (g_brand.active->evt_table->on_rx_frame(context, data, length)) {
         g_brand.locked = 1;
-        ac_runtime_t *ac = (ac_runtime_t *)context;
+        gateway_device_t *ac = (gateway_device_t *)context;
         ac->evt_table = g_brand.active->evt_table;
         return 1;
     }

@@ -1,7 +1,7 @@
 #ifndef BRAND_MANAGER_H
 #define BRAND_MANAGER_H
 #include "packet.h"
-#include "ac.h"
+#include "gateway_device.h"
 
 /* 物理接口配置 */
 typedef struct {
