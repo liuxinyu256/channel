@@ -17,7 +17,7 @@ typedef struct brand_config {
     const char             *name;
     const phy_config_t     *phy;
     const event_handler_t  *evt_table;
-    const ac_ability_t     *ability;
+    const gateway_ability_t     *ability;
     packetizer_t           *packetizer;
 } brand_config_t;
 
