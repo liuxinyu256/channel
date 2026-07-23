@@ -49,7 +49,7 @@ typedef struct {
     void (*on_scan)         (void *ctx);
 } event_handler_t;
 
-/* ---- 事件运行时 ---- */
+/* ---- 网关设备基类 ---- */
 typedef struct {
     const event_handler_t *evt_table;
     bus_controller_t *bus;
