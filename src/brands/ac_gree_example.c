@@ -10,6 +10,11 @@ static uint8_t g_scanning;
 static frame_timer_t *g_timer;
 static packetizer_t  *g_packetizer;
 
+static const phy_config_t phy = {
+    .type = 0, .uart_id = 1, .baudrate = 115200,
+    .de_pin = 0, .rx_pin = 8, .tx_pin = 9,
+};
+
 static const ac_ability_t ability = {
     .temp_min = 16, .temp_max = 30, .fan_levels = 3,
     .mode_mask = 0x1F, .has_swing = 1, .has_sleep = 1, .has_eco = 0,
@@ -89,6 +94,7 @@ static const event_handler_t gree_table = {
 /* ---- 品牌配置 ---- */
 const brand_config_t gree_config = {
     .name       = "gree",
+    .phy        = &phy,
     .evt_table  = &gree_table,
     .ability    = &ability,
     .packetizer = NULL,   /* gree_init() 填充 */
