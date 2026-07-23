@@ -3,6 +3,14 @@
 #include "packet.h"
 #include "gateway_device.h"
 
+/* 空调能力描述 */
+typedef struct {
+    uint8_t temp_min, temp_max;
+    uint8_t fan_levels;
+    uint8_t mode_mask;
+    uint8_t has_swing, has_sleep, has_eco;
+} gateway_ability_t;
+
 /* 物理接口配置 */
 typedef struct {
     uint8_t  type;       /* RS485 / HBS / IR / TTL */

@@ -13,14 +13,6 @@
 
 typedef struct bus_controller bus_controller_t;
 
-/* ---- 能力描述 ---- */
-typedef struct {
-    uint8_t temp_min, temp_max;
-    uint8_t fan_levels;
-    uint8_t mode_mask;
-    uint8_t has_swing, has_sleep, has_eco;
-} gateway_ability_t;
-
 /* ---- 事件类型 ---- */
 typedef enum {
     EVENT_PERIODIC_SEND,
