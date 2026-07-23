@@ -20,7 +20,7 @@ static const phy_config_t phy = {
     .de_pin = 0, .rx_pin = 8, .tx_pin = 9,
 };
 
-static const ac_ability_t ability = {
+static const gateway_ability_t ability = {
     .temp_min = 16, .temp_max = 30, .fan_levels = 3,
     .mode_mask = 0x1F, .has_swing = 1, .has_sleep = 1, .has_eco = 0,
 };
@@ -68,7 +68,7 @@ static int ev_rx_frame(void *ctx, uint8_t *d, uint16_t n) {
 
     if (g_scanning) {
         g_scanning = 0;
-        ac_set_poll_period(ac, 5000);
+        gateway_set_poll_period(ac, 5000);
         return 1;
     }
     if (d[2] == 0x20) {

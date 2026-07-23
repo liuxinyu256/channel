@@ -9,7 +9,7 @@ extern const event_handler_t brand_manager_scan_table;
 static struct {
     bus_controller_t    bus;
     phy_driver_t       *phy;
-    gateway_device_t         ac_device;
+    gateway_device_t         gateway_device;
     const brand_config_t *configs[MAX_BRANDS];
     const brand_config_t *active;
     uint8_t             count;
@@ -22,7 +22,7 @@ void brand_manager_on_frame(uint8_t *data, uint16_t length)
 {
     BaseType_t woken = pdFALSE;
     event_t event = { .type = EVENT_RX_FRAME, .data = data, .len = length };
-    xQueueSendFromISR(g_brand.ac_device.evt_queue, &event, &woken);
+    xQueueSendFromISR(g_brand.gateway_device.evt_queue, &event, &woken);
     bus_on_rx_done(&g_brand.bus);
     portYIELD_FROM_ISR(woken);
 }
@@ -36,7 +36,7 @@ static void switch_to(uint8_t idx)
     g_brand.bus.phy->set_rx_cb(g_brand.bus.phy,
         g_brand.active->evt_table->on_rx_byte, &g_brand.bus);
 
-    gateway_device_t *ac = &g_brand.ac_device;
+    gateway_device_t *ac = &g_brand.gateway_device;
     ac->evt_table = &brand_manager_scan_table;
 
     g_brand.active->evt_table->on_scan(ac);
@@ -51,9 +51,9 @@ void brand_manager_init(void)
     g_brand.phy->open(g_brand.phy);
     bus_create_tx_task(&g_brand.bus, 200, 2);
 
-    ac_init(&g_brand.ac_device, &g_brand.bus,
+    gateway_init(&g_brand.gateway_device, &g_brand.bus,
             &brand_manager_scan_table, 200);
-    ac_create_task(&g_brand.ac_device, 256, 3);
+    gateway_create_task(&g_brand.gateway_device, 256, 3);
 
     g_brand.count  = 0;
     g_brand.index  = 0;
