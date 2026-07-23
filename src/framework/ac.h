@@ -50,10 +50,8 @@ typedef struct {
 } event_handler_t;
 
 /* ---- 设备基类 ---- */
+/* ---- 设备基类 (纯事件引擎) ---- */
 typedef struct ac_device {
-    uint8_t power, mode, set_temp, room_temp;
-    uint8_t fan, swing, sleep, error_code;
-
     const event_handler_t *evt_table;
     bus_controller_t *bus;
 

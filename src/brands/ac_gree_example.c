@@ -7,6 +7,11 @@
 
 static uint8_t g_scanning;
 
+static struct {
+    uint8_t power, mode, set_temp, room_temp;
+    uint8_t fan, swing, sleep;
+} g_state;
+
 static frame_timer_t *g_timer;
 static packetizer_t  *g_packetizer;
 
@@ -67,7 +72,8 @@ static int ev_rx_frame(void *ctx, uint8_t *d, uint16_t n) {
         return 1;
     }
     if (d[2] == 0x20) {
-        ac->power = d[3] >> 7; ac->mode = d[3] & 0x0F; ac->set_temp = d[4] >> 1;
+        g_state.power = d[3] >> 7; g_state.mode = d[3] & 0x0F;
+        g_state.set_temp = d[4] >> 1;
     }
     return 1;
 }
