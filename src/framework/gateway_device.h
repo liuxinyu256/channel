@@ -1,14 +1,11 @@
-#ifndef HVAC_AC_H
-#define HVAC_AC_H
+#ifndef GATEWAY_DEVICE_H
+#define GATEWAY_DEVICE_H
 
 #include <stdint.h>
 #ifdef FAKE_FREERTOS
 #include "fake_freertos.h"
 #else
 #include "FreeRTOS.h"
-#include "task.h"
-#include "queue.h"
-#include "timers.h"
 #endif
 
 typedef struct bus_controller bus_controller_t;
@@ -31,7 +28,7 @@ typedef struct {
     uint8_t       cmd_arg;
 } event_t;
 
-/* ---- 事件表 (品牌填空) ---- */
+/* ---- 事件表 ---- */
 typedef struct {
     void (*on_rx_byte)      (uint8_t byte, void *ctx);
     void (*on_periodic_send)(void *ctx);
@@ -41,26 +38,12 @@ typedef struct {
     void (*on_scan)         (void *ctx);
 } event_handler_t;
 
-/* ---- 网关设备基类 ---- */
+/* ---- 网关设备 ---- */
 typedef struct {
-    const event_handler_t *evt_table;
     bus_controller_t *bus;
-
-    TimerHandle_t  poll_timer;
-    uint16_t       poll_period_ms;
-
-    QueueHandle_t  evt_queue;
-    TaskHandle_t   task;
 } gateway_device_t;
 
-/* ---- 框架 API ---- */
-void gateway_task(void *pv);
-void gateway_init(gateway_device_t *ac, bus_controller_t *bus,
-             const event_handler_t *table, uint16_t poll_ms);
-void gateway_create_task(gateway_device_t *ac, uint16_t stack, UBaseType_t prio);
-void gateway_post(gateway_device_t *ac, const event_t *ev);
-void gateway_post_from_isr(gateway_device_t *ac, const event_t *ev,
-                      BaseType_t *pxHigherPriorityTaskWoken);
-void gateway_set_poll_period(gateway_device_t *ac, uint16_t period_ms);
+/* ---- API ---- */
+void gateway_init(gateway_device_t *gw, bus_controller_t *bus);
 
 #endif

@@ -68,7 +68,7 @@ static int ev_rx_frame(void *ctx, uint8_t *d, uint16_t n) {
 
     if (g_scanning) {
         g_scanning = 0;
-        gateway_set_poll_period(ac, 5000);
+        brand_manager_set_poll_period(ac, 5000);
         return 1;
     }
     if (d[2] == 0x20) {
