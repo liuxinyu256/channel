@@ -42,10 +42,8 @@ void ac_task(void *pv) {
 }
 
 void ac_init(ac_device_t *ac, bus_controller_t *bus,
-             const ac_ability_t *ability, const event_handler_t *table,
-             uint16_t poll_ms) {
+             const event_handler_t *table, uint16_t poll_ms) {
     memset(ac, 0, sizeof(*ac));
-    ac->ability   = ability;
     ac->evt_table = table;
     ac->bus       = bus;
     ac->poll_period_ms = poll_ms;

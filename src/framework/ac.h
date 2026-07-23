@@ -54,7 +54,6 @@ typedef struct ac_device {
     uint8_t power, mode, set_temp, room_temp;
     uint8_t fan, swing, sleep, error_code;
 
-    const ac_ability_t *ability;
     const event_handler_t *evt_table;
     bus_controller_t *bus;
 
@@ -68,8 +67,7 @@ typedef struct ac_device {
 /* ---- 框架 API ---- */
 void ac_task(void *pv);
 void ac_init(ac_device_t *ac, bus_controller_t *bus,
-             const ac_ability_t *ability, const event_handler_t *table,
-             uint16_t poll_ms);
+             const event_handler_t *table, uint16_t poll_ms);
 void ac_create_task(ac_device_t *ac, uint16_t stack, UBaseType_t prio);
 void ac_post(ac_device_t *ac, const event_t *ev);
 void ac_post_from_isr(ac_device_t *ac, const event_t *ev,

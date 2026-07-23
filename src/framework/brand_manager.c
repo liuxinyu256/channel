@@ -38,7 +38,6 @@ static void switch_to(uint8_t idx)
 
     ac_device_t *ac = &g_brand.ac_device;
     ac->evt_table = &brand_manager_scan_table;
-    ac->ability   = g_brand.active->ability;
 
     g_brand.active->evt_table->on_scan(ac);
 }
@@ -52,7 +51,7 @@ void brand_manager_init(void)
     g_brand.phy->open(g_brand.phy);
     bus_create_tx_task(&g_brand.bus, 200, 2);
 
-    ac_init(&g_brand.ac_device, &g_brand.bus, NULL,
+    ac_init(&g_brand.ac_device, &g_brand.bus,
             &brand_manager_scan_table, 200);
     ac_create_task(&g_brand.ac_device, 256, 3);
 
